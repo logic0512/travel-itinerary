@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{DESTINATION}} {{DAYS}} 天 · Q1 决策问卷</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #faf6ef; --fg: #2a2418; --muted: #7a6f58; --line: #d8cfb8;
+  --card: #fffbf4;
+  --hot-red: #c0392b;          /* 主强调色，由 theme.css 覆盖 */
+  --hot-red-dark: #962b21;
+  --green: #2e7d4f;            /* 辅助色，由 theme.css 覆盖 */
+  --rice: #faf6ef;             /* 背景底色，由 theme.css 覆盖 */
+  --warn-bg: #fff3cd; --warn-border: #e8a93c;
+  --required: #c0392b;
+}
+html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+body {
+  font: 14.5px/1.65 "Songti SC", "SimSun", "Source Han Serif SC", Georgia, serif;
+  color: var(--fg); background: var(--bg);
+  max-width: 540px; margin: 0 auto; padding-bottom: 80px;
+}
+
+/* 顶栏 · 非 sticky */
+header.top {
+  background: linear-gradient(135deg, var(--hot-red), var(--hot-red-dark));
+  color: #fff8e0; padding: 14px 16px; border-bottom: 3px solid var(--green);
+}
+header.top h1 { font-size: 17px; font-weight: 700; letter-spacing: 1px; }
+header.top .sub { font-size: 11.5px; opacity: .9; margin-top: 3px; }
+header.top .note {
+  font-size: 11px; margin-top: 8px; padding: 6px 10px;
+  background: rgba(46,125,79,.2); border-left: 3px solid var(--green);
+  border-radius: 3px; line-height: 1.55;
+}
+
+/* 进度条 */
+.progress-wrap {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg); padding: 6px 12px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.progress-bar { height: 6px; background: #e8ddc4; border-radius: 3px; overflow: hidden; }
+.progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--green), var(--hot-red));
+  width: 0%; transition: width .3s;
+}
+.progress-info {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 10.5px; color: var(--muted); margin-top: 3px;
+  font-family: -apple-system, sans-serif;
+}
+.progress-info .saved { color: var(--green); }
+
+/* 章节导航 · sticky */
+nav.chapters {
+  position: sticky; top: 34px; z-index: 95;
+  background: rgba(250,246,239,.96); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+  padding: 8px 10px; overflow-x: auto; white-space: nowrap;
+}
+nav.chapters::-webkit-scrollbar { display: none; }
+nav.chapters a {
+  display: inline-block; padding: 5px 10px; margin-right: 3px; font-size: 11.5px;
+  color: var(--muted); text-decoration: none;
+  border: 1px solid var(--line); border-radius: 12px; background: #fff;
+}
+
+main { padding: 12px; }
+section {
+  margin-bottom: 24px; scroll-margin-top: 80px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px;
+}
+section h2 {
+  font-size: 16px; font-weight: 700; color: var(--hot-red);
+  padding-bottom: 6px; border-bottom: 2px solid var(--hot-red);
+  letter-spacing: .5px; margin-bottom: 6px;
+}
+section .sec-desc { font-size: 12px; color: var(--muted); margin: 4px 0 14px; line-height: 1.7; }
+.req { color: var(--required); font-weight: bold; }
+
+.field { margin-bottom: 12px; }
+.field label.q { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.field input[type=text], .field input[type=number], .field select, .field textarea {
+  width: 100%; padding: 7px 9px; border: 1px solid var(--line);
+  border-radius: 5px; font: inherit; font-size: 13px; background: #fff;
+}
+.field textarea { min-height: 52px; resize: vertical; }
+.field .opts label {
+  display: block; padding: 8px 10px; border: 1px solid var(--line);
+  border-radius: 5px; margin-bottom: 5px; cursor: pointer;
+  background: #fff; font-size: 12.5px;
+}
+.field .opts label:has(input:checked) {
+  background: #fff1ec; border-color: var(--hot-red);
+}
+
+/* 主题 */
+.themes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.theme-card {
+  padding: 12px 9px; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; text-align: center; cursor: pointer; transition: all .15s;
+}
+.theme-card:has(input:checked) {
+  background: linear-gradient(135deg, #fff1ec, #ffd9d0);
+  border-color: var(--hot-red); box-shadow: 0 1px 3px rgba(192,57,43,.2);
+}
+.theme-card .emoji { font-size: 22px; margin-bottom: 3px; }
+.theme-card .name { font-size: 12.5px; font-weight: 600; }
+.theme-card input { display: none; }
+
+/* 风险 */
+.risk-block {
+  background: var(--warn-bg); border: 1px solid var(--warn-border);
+  border-radius: 8px; padding: 12px; margin-bottom: 10px;
+}
+.risk-block.generic { background: #eaf3ea; border-color: var(--green); }
+.risk-block .title { font-size: 13.5px; font-weight: 700; margin-bottom: 3px; }
+.risk-block .desc { font-size: 12px; color: #555; margin-bottom: 8px; line-height: 1.6; }
+.risk-block label { display: block; padding: 4px 0; font-size: 12.5px; cursor: pointer; }
+
+/* 跳过整组 */
+.group-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 14px 0 8px; padding: 8px 10px; background: #fffbf4;
+  border-left: 4px solid var(--hot-red); border-radius: 4px;
+}
+.group-header h3 { font-size: 14px; font-weight: 600; letter-spacing: .5px; }
+.skip-group-btn {
+  font: inherit; font-size: 11px; padding: 4px 8px;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  color: var(--muted); cursor: pointer;
+}
+
+/* 候选卡 */
+.card {
+  background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px; margin-bottom: 10px; position: relative;
+}
+.card .claude-rec {
+  position: absolute; top: 8px; right: 8px;
+  padding: 2px 6px; border-radius: 3px;
+  background: rgba(46,125,79,.1); color: var(--green);
+  font-size: 10px; font-family: -apple-system, sans-serif;
+}
+.card .old-list-tag {
+  position: absolute; top: 8px; right: 8px;
+  padding: 2px 6px; border-radius: 3px;
+  background: rgba(192,57,43,.1); color: var(--hot-red);
+  font-size: 10px; font-family: -apple-system, sans-serif;
+}
+.card h4 { font-size: 14px; font-weight: 700; padding-right: 80px; }
+.card .tag { font-size: 11px; color: var(--muted); margin-left: 4px; font-weight: normal; }
+.card .highlight {
+  background: #fff1ec; border-left: 3px solid var(--hot-red);
+  padding: 5px 8px; margin: 6px 0 8px; font-size: 12px;
+  border-radius: 3px; line-height: 1.5;
+}
+.card .info {
+  font-size: 11px; color: var(--muted); margin: 4px 0;
+  font-family: -apple-system, sans-serif;
+}
+.card .info span { margin-right: 8px; }
+.card .links { font-size: 11px; margin: 6px 0; font-family: -apple-system, sans-serif; }
+.card .links a { color: var(--hot-red); text-decoration: none; margin-right: 12px; }
+.card .decision {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;
+  padding-top: 8px; border-top: 1px dashed var(--line);
+}
+.card .decision label { font-size: 12.5px; cursor: pointer; }
+.card textarea.note {
+  width: 100%; margin-top: 6px; padding: 5px 7px;
+  border: 1px solid var(--line); border-radius: 4px;
+  font: inherit; font-size: 11.5px; min-height: 28px;
+}
+
+/* 美食时段 */
+.meal-slot {
+  display: inline-block; padding: 1px 6px; margin-right: 3px;
+  background: var(--green); color: #fff; border-radius: 3px;
+  font-size: 10px; font-family: -apple-system, sans-serif;
+}
+
+/* 片区动态 */
+.region-summary {
+  padding: 10px 12px; background: #fff; border: 1px solid var(--line);
+  border-radius: 8px; margin-bottom: 8px;
+}
+.region-summary h4 {
+  font-size: 13px; font-weight: 700; margin-bottom: 4px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.region-summary .count {
+  font-size: 11px; color: var(--green); font-family: -apple-system, sans-serif;
+  background: #eaf3ea; padding: 2px 8px; border-radius: 10px;
+  font-weight: normal;
+}
+.region-summary ul { list-style: none; padding: 0; font-size: 11.5px; color: #666; }
+.region-summary li { padding: 2px 0; }
+.region-summary li::before { content: '· '; color: var(--muted); }
+.region-empty {
+  padding: 14px; text-align: center; color: var(--muted);
+  font-size: 12px; font-style: italic;
+}
+
+/* 购物 */
+.shop-cat {
+  padding: 12px; background: #fff; border: 1px solid var(--line);
+  border-radius: 8px; margin-bottom: 10px;
+}
+.shop-cat h3 { font-size: 14px; color: var(--hot-red); margin-bottom: 6px; }
+.shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.shop-grid label {
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px;
+  background: var(--bg); font-size: 12px; cursor: pointer; line-height: 1.4;
+}
+.shop-grid label small { color: var(--muted); font-size: 10.5px; display: block; }
+
+/* entity_type 徽章 */
+.badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; margin-left: 4px; }
+.badge-brand { background: #d6eaf8; color: #1a5276; }
+.badge-agg   { background: #fdebd0; color: #784212; }
+.badge-gone  { background: #fadbd8; color: #922b21; }
+.card-gone { opacity: 0.5; text-decoration: line-through; border-left: 3px solid #e74c3c; }
+
+/* isLocked 必去按钮 */
+.btn-lock {
+  font: inherit; font-size: 11px; padding: 4px 8px;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  color: var(--muted); cursor: pointer; margin-top: 4px;
+}
+.card-locked { border: 2px solid #27ae60; background: #eafaf1; }
+
+/* solo 独行偏好 */
+.solo-box {
+  background: #f0f4ff; border: 1px solid #b0c4f8; border-radius: 8px;
+  padding: 12px; margin-top: 8px;
+}
+.solo-box .sec-label { font-size: 12.5px; font-weight: 600; margin-bottom: 8px; color: #2c3e88; }
+.solo-box .field { margin-bottom: 10px; }
+.solo-box .options label { display: block; padding: 5px 8px; font-size: 12.5px; cursor: pointer; }
+
+/* 预算紧度警告 */
+.budget-warn { background: #fef9e7; border-left: 4px solid #f39c12; padding: 8px 12px; margin-top: 6px; border-radius: 3px; font-size: 12.5px; }
+
+/* 空 group 占位 */
+.empty-note { color: #999; font-style: italic; padding: 8px 12px; border: 1px dashed #ddd; border-radius: 4px; font-size: 12px; }
+
+/* 导出 */
+.export-area { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.export-area textarea {
+  width: 100%; height: 320px; font: 11px/1.5 ui-monospace, Menlo, monospace;
+  padding: 10px; border: 1px solid var(--line); border-radius: 5px; margin-top: 10px;
+}
+.btn {
+  padding: 10px 16px; background: var(--hot-red); color: #fff8e0;
+  border: none; border-radius: 5px; font: inherit; font-weight: 600;
+  cursor: pointer; margin-right: 6px;
+}
+.btn.secondary { background: #fff; color: var(--hot-red); border: 1px solid var(--hot-red); }
+
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: #fff; padding: 9px 18px;
+  border-radius: 18px; font-size: 12.5px; opacity: 0;
+  transition: opacity .3s; z-index: 200; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+footer { text-align: center; font-size: 10.5px; color: var(--muted); padding: 18px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>{{DESTINATION}} {{DAYS}} 天 · Q1 决策问卷</h1>
+  <div class="sub">{{START_DATE}} · {{PEOPLE}} 人 · {{ORIGIN}} 出发</div>
+  <div class="note">📌 <b>Phase 1 定位</b>：填完后 Claude 给你<b>分析报告</b>（交通班次/酒店推荐/餐饮清单/动线建议）。<br>🔴 标 <span style="color:#fff1ec;background:rgba(192,57,43,.4);padding:1px 4px;">旧清单</span> 的是你之前此地用过的，已默认勾选你可改。</div>
+</header>
+
+<div class="progress-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+  <div class="progress-info">
+    <span id="progress-text">0% · 0/8 章</span>
+    <span class="saved" id="saved-info">草稿自动保存 ✓</span>
+  </div>
+</div>
+
+<nav class="chapters" id="nav">
+  <a href="#s0">0 基础*</a>
+  <a href="#s1">1 主题</a>
+  <a href="#s2">2 风险</a>
+  <a href="#s3">3 活动</a>
+  <a href="#s4">4 美食</a>
+  <a href="#s5">5 片区</a>
+  <a href="#s6">6 购物</a>
+  <a href="#s7">7 想法</a>
+  <a href="#s8">8 导出</a>
+</nav>
+
+<main>
+
+<section id="s0">
+  <h2>0 · 基础信息</h2>
+  <p class="sec-desc">带 <span class="req">*</span> 为必填。基本信息已预填，确认/微调即可。</p>
+
+  <div class="field">
+    <label class="q">出发地 <span class="req">*</span></label>
+    <input type="text" name="origin" value="{{ORIGIN}}" readonly style="background:#f5f5f5;">
+  </div>
+
+  <div class="field">
+    <label class="q">人数 + 关系 <span class="req">*</span></label>
+    <input type="number" name="people" value="{{PEOPLE}}" readonly style="width:25%;background:#f5f5f5;margin-right:10px;"> 人
+  </div>
+
+  <!-- §4 独行偏好 · 人数=1 时自动展开 -->
+  <div id="solo-section" style="display:none;" class="solo-box">
+    <p class="sec-label">👤 独行偏好（1人出行专属）</p>
+    <div class="field">
+      <label class="q">正餐方式偏好</label>
+      <div class="options">
+        <label><input type="radio" name="solo_meal" value="small_restaurant"> 独行友好小馆（4桌以内）</label>
+        <label><input type="radio" name="solo_meal" value="counter"> 吧台/料理台</label>
+        <label><input type="radio" name="solo_meal" value="shared_table"> 拼桌可接受</label>
+        <label><input type="radio" name="solo_meal" value="any" checked> 不在意</label>
+      </div>
+    </div>
+    <div class="field">
+      <label class="q">夜间外出边界</label>
+      <div class="options">
+        <label><input type="radio" name="solo_night" value="22:00"> 22点前回酒店</label>
+        <label><input type="radio" name="solo_night" value="23:00"> 23点前</label>
+        <label><input type="radio" name="solo_night" value="none" checked> 无限制（含深夜场）</label>
+      </div>
+    </div>
+    <div class="field">
+      <label class="q">安全提醒</label>
+      <div class="options">
+        <label><input type="checkbox" name="solo_safety" value="true"> 需要夜归路线/末班交通提示</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">日期 <span class="req">*</span></label>
+    <input type="text" name="dates" value="{{DATE_RANGE}}" readonly style="background:#f5f5f5;">
+  </div>
+
+  <div class="field">
+    <label class="q">去程交通偏好 <span class="req">*</span></label>
+    <div class="opts">
+      <!-- 由 Stage 0 按班次填充 -->
+      <label><input type="radio" name="train_out" value="other"> 其他 / 已订</label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">返程交通偏好 <span class="req">*</span></label>
+    <div class="opts">
+      <!-- 由 Stage 0 按班次填充 -->
+      <label><input type="radio" name="train_back" value="other"> 其他 / 已订</label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">酒店片区偏好 <span class="req">*</span></label>
+    <div class="opts">
+      <!-- 由 Stage 0 按目的地片区填充 -->
+      <label><input type="radio" name="hotel_zone" value="other"> 其他</label>
+    </div>
+  </div>
+
+  <!-- v2.3+ 出行交通规划 -->
+  <div class="field">
+    <label class="q">目的地内出行方式</label>
+    <p class="field-hint" style="font-size:11.5px;color:var(--muted);margin:2px 0 6px;">Claude 会在 Phase 1 报告里给出具体建议；如需购买通票，会提前说明购买时机和地点</p>
+    <div class="opts">
+      <label><input type="radio" name="transport_mode" value="transit" checked onchange="toggleTransportNote()"> 🚇 公共交通为主（地铁/巴士）</label>
+      <label><input type="radio" name="transport_mode" value="pass" onchange="toggleTransportNote()"> 🎫 需要区域通票（JR Pass / 城市卡等）</label>
+      <label><input type="radio" name="transport_mode" value="rental" onchange="toggleTransportNote()"> 🚗 考虑租车自驾</label>
+      <label><input type="radio" name="transport_mode" value="taxi" onchange="toggleTransportNote()"> 🚖 以打车 / Uber 为主</label>
+    </div>
+    <div id="transport-pass-note" style="display:none; margin-top:8px;">
+      <input type="text" name="pass_hint" placeholder="已了解的通票名称（如：JR关西广域券 / 大阪周游卡），不知道可不填，Claude 会建议">
+    </div>
+    <div id="transport-rental-note" style="display:none; margin-top:8px;">
+      <input type="text" name="rental_hint" placeholder="驾照情况 / 路线方向（如：有国际驾照 / 主要跑山区）">
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">总预算（元/含交通）</label>
+    <input type="number" name="budget_total" placeholder="如：3000" oninput="checkBudgetTightness()">
+    <div id="budget-warning" class="budget-warn" style="display:none;">
+      💰 系统判断该预算属<b>偏紧</b>，建议在 §2 风险决策中优先选平价方案
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">酒店预算</label>
+    <div class="opts">
+      <label><input type="radio" name="budget" value="300-500"> ¥300-500 / 间夜</label>
+      <label><input type="radio" name="budget" value="500-700" checked> ¥500-700 / 间夜</label>
+      <label><input type="radio" name="budget" value="700-1000"> ¥700-1000 / 间夜</label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">特殊需求</label>
+    <textarea name="special_needs" placeholder="如：忌口 / 体力限制 / 特殊期待..."></textarea>
+  </div>
+
+  <!-- v2.3 §3.10 雨天态度 -->
+  <div class="field" id="weather-field">
+    <label class="q">雨天态度</label>
+    <p class="field-hint" style="font-size:11.5px;color:var(--muted);margin:2px 0 6px;">影响 Claude 排室内/室外景点比例 · 临近出发时也用于动态调整</p>
+    <div class="opts">
+      <label><input type="radio" name="weather_tolerance" value="high"> ☀️ 晴天控（雨天优先室内，景点换为博物馆/美食/购物）</label>
+      <label><input type="radio" name="weather_tolerance" value="medium" checked> 🌤 适中（少量雨天不影响，重要景点照去）</label>
+      <label><input type="radio" name="weather_tolerance" value="low"> 🌧 雨天探险型（不怕淋，照常去室外）</label>
+      <label><input type="radio" name="weather_tolerance" value="flex"> 🎲 临场决定（行程不预设，看当天情况）</label>
+    </div>
+    <div id="weather-risk-warning" style="display:none; margin-top:8px; padding:8px 10px;
+      background:#eaf4fb; border-left:3px solid #2980b9; border-radius:4px; font-size:12px;">
+      🌧 <b>出发前 7 天内</b>：系统会在 trip.html 显示实时天气预报，并标注各景点的室外风险与室内备选
+    </div>
+  </div>
+</section>
+
+<section id="s1">
+  <h2>1 · 主题偏好</h2>
+  <p class="sec-desc">勾你们想要的。Claude 会按这些权重推荐。</p>
+  <div class="themes-grid" id="themes-grid"></div>
+</section>
+
+<section id="s2">
+  <h2>2 · 风险决策</h2>
+  <p class="sec-desc">仅"决策"类（影响 timeline 编排）。提醒类已自动归入 trip.html 速查卡。</p>
+  <div id="risks-list"></div>
+  <!-- v2.2 #1 风险拆解 · 决策 vs 提醒 -->
+  <div style="margin-top:14px;padding:10px 12px;background:#f4f1ea;border-left:3px solid var(--muted);border-radius:4px;font-size:11.5px;color:var(--muted);line-height:1.7;">
+    📋 <b>自动归类的提醒</b>（已记入 trip.html 速查卡 · 不需选择）：由 Stage 1 按目的地自动生成
+  </div>
+</section>
+
+<section id="s3">
+  <h2>3 · 活动候选（景点 + 体验）</h2>
+  <p class="sec-desc">目的地活动候选，可整组跳过。</p>
+  <div id="activities-list"></div>
+</section>
+
+<section id="s4">
+  <h2>4 · 美食候选 <span style="font-size:11px;color:var(--green);font-weight:normal;">（核心 · 7 类）</span></h2>
+  <p class="sec-desc">🔴 标"旧清单"的是你之前此地去过的 · 默认勾"必吃" · 你可改 · 各类候选并列让你比较。</p>
+  <div id="foods-list"></div>
+
+  <!-- v2.2 #17 宵夜偏好 -->
+  <h3 style="font-size:14px;color:var(--hot-red);margin:18px 0 8px;border-top:1px dashed var(--line);padding-top:14px;">4.4 · 宵夜偏好（21:00+）</h3>
+  <p class="sec-desc" style="margin-top:0;">国内出行核心场景 · Claude 会按这个安排 timeline 21 点之后的安排。</p>
+
+  <div class="field">
+    <label class="q">宵夜频次</label>
+    <div class="opts">
+      <label><input type="radio" name="night_freq" value="每天"> 每天（每晚都吃）</label>
+      <label><input type="radio" name="night_freq" value="隔天"> 隔天（避免太顶）</label>
+      <label><input type="radio" name="night_freq" value="仅 1-2 天" checked> 仅 1-2 天（精挑）</label>
+      <label><input type="radio" name="night_freq" value="不吃宵夜"> 不吃宵夜</label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">偏好类型（可多选）</label>
+    <div class="opts">
+      <label><input type="checkbox" name="night_types" value="当地小吃夜场" checked> 🍜 当地小吃夜场</label>
+      <label><input type="checkbox" name="night_types" value="烧烤"> 🔥 烧烤</label>
+      <label><input type="checkbox" name="night_types" value="甜品"> 🍮 甜品</label>
+      <label><input type="checkbox" name="night_types" value="24h 老店" checked> 🌃 24h 老店</label>
+      <label><input type="checkbox" name="night_types" value="大排档"> 🍻 大排档</label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label class="q">时段偏好</label>
+    <div class="opts">
+      <label><input type="radio" name="night_time" value="21-23" checked> 21-23 点（早宵夜）</label>
+      <label><input type="radio" name="night_time" value="23+"> 23 点之后（深夜场）</label>
+      <label><input type="radio" name="night_time" value="看心情"> 看心情</label>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2>5 · 片区汇总 <span style="font-size:11px;color:var(--green);font-weight:normal;">🤖 自动推导</span></h2>
+  <p class="sec-desc">根据你 §3/§4 选的点，自动汇总涉及哪些片区 + 让你确认住哪个。</p>
+  <div id="regions-summary"></div>
+</section>
+
+<section id="s6">
+  <h2>6 · 购物 · 特产</h2>
+  <p class="sec-desc">目的地特产送人/自用 · 多在当地市场或离开前买。</p>
+  <div id="shopping-list"></div>
+</section>
+
+<section id="s7">
+  <h2>7 · 开放想法</h2>
+  <p class="sec-desc">4 个引导问题 · 不强制都填。</p>
+  <div class="open-prompts">
+    <div class="field"><label class="q">💭 我担心...</label><textarea name="open_worry" placeholder="如：怕排队太久 / 怕辣度受不了 / 怕电动车不熟路..."></textarea></div>
+    <div class="field"><label class="q">✨ 我特别想感受...</label><textarea name="open_hope" placeholder="如：当地市场探访 / 某个特定体验 / 想做的事..."></textarea></div>
+    <div class="field"><label class="q">❓ 我想问 Claude...</label><textarea name="open_question" placeholder="如：哪个景点最值得去？当地有什么禁忌？"></textarea></div>
+    <div class="field"><label class="q">➕ 我还想补充...</label><textarea name="open_add" placeholder="任何其他想法"></textarea></div>
+  </div>
+</section>
+
+<section id="s8">
+  <h2>8 · 导出</h2>
+  <p class="sec-desc">点按钮生成 markdown · 贴回对话 → Claude 给你<b>分析报告</b>（酒店推荐 / 嗦粉店清单 / 动线 / 风险清单）。</p>
+  <div class="export-area">
+    <button class="btn" onclick="generateMarkdown()">生成 decisions.md（自动复制）</button>
+    <button class="btn secondary" onclick="downloadMarkdown()">下载文件</button>
+    <button class="btn secondary" onclick="clearDraft()">清空草稿</button>
+    <textarea id="export-output" placeholder="点上方按钮，markdown 显示在这..."></textarea>
+  </div>
+</section>
+
+</main>
+
+<div class="toast" id="toast">已复制 ✓</div>
+<footer>{{DESTINATION}} Q1 v2.3 · 草稿本地保存</footer>
+
+<script>
+// ============ 目的地元数据 ============
+const _PROFILE = {
+  destination: '{{DESTINATION}}',  // 如"上海"
+  trip_id:     '{{TRIP_ID}}',      // 如"shanghai-2026-05"
+  days:         0,                  // 如 5
+  people:       0,                  // 如 1 或 2
+  start_date:  '{{START_DATE}}',   // 如"2026-05-01"
+  archetype:   '{{ARCHETYPE}}',    // short/medium-single/medium-multi/long
+  country_code:'{{COUNTRY_CODE}}', // CN/JP/IT...
+  city_tier:   '{{CITY_TIER}}',    // tier1/tier2/international（影响预算紧度判定）
+  regions:     [],                  // 目的地片区列表，如 ['huangpu','hengfu','lujiazui']
+  time_thresholds: {
+    breakfast_end: 11,
+    lunch_end: 14,
+    snack_end: 17,
+    dinner_end: 21,     // CN=21, IT/ES=24
+    late_night: 21,     // CN=21, IT/ES=null（null=不渲染宵夜子类）
+  }
+};
+
+// 动态渲染头部
+(function initHead() {
+  document.title = `${_PROFILE.destination} ${_PROFILE.days}天 · Q1 决策问卷`;
+  const h1 = document.querySelector('header.top h1');
+  if (h1) h1.textContent = `${_PROFILE.destination} ${_PROFILE.days}天 · Q1 决策问卷`;
+  const footer = document.querySelector('footer');
+  if (footer) footer.textContent = `${_PROFILE.destination} Q1 v2.3 · 草稿本地保存`;
+})();
+
+const DATA = {
+  themes: [
+    // { id: 'xxx', e: '🏘️', n: '主题名', desc: '描述' },
+    // 由 Stage 0 按目的地填充
+  ],
+
+  risks: [
+    // { id: 'r_xxx', scope: 'specific'|'general', title: '标题', desc: '描述', options: [...] },
+    // 由 Stage 1 按目的地生成决策项
+  ],
+
+  activities: {
+    // sights: {
+    //   name: '🏯 景点',
+    //   items: [
+    //     { id: 'a_xxx', name: '景点名', tag: '标签', highlight: '亮点介绍',
+    //       city: '所在城市', region: '片区slug', claude_rec: '推荐/必去/备选',
+    //       isLocked: false, entity_type: 'storefront'|'brand'|'aggregate'|'changed_or_gone' }
+    //   ]
+    // },
+    // 由 Stage 0 按目的地填充
+  },
+
+  foods: {
+    // category_key: {
+    //   name: '🥟 类目名',
+    //   items: [
+    //     { id: 'f_xxx', name: '店名', meal: ['breakfast'|'lunch'|'dinner'|'late_night'],
+    //       desc: '描述', area: '片区', region: '片区slug',
+    //       hours: { open: '11:00', close: '21:00', weekly_off: '周一' },
+    //       claude_rec: '必吃/推荐/备选', entity_type: 'storefront'|'brand'|'aggregate'|'changed_or_gone',
+    //       isOld: false }
+    //   ]
+    // },
+    // 由 Stage 0 按目的地填充
+  },
+
+  shopping: {
+    // snacks: {
+    //   name: '🍪 带回家小吃',
+    //   items: [
+    //     { id: 's_xxx', label: '特产名', desc: '描述' },
+    //   ]
+    // },
+    // 由 Stage 0 按目的地填充
+  }
+};
+
+/* ============ 工具函数 ============ */
+function el(html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
+
+// entity_type 四态徽章
+function getEntityBadge(entity_type) {
+  switch(entity_type) {
+    case 'storefront':      return '';
+    case 'brand':           return '<span class="badge badge-brand">🔵 连锁·找最近分店</span>';
+    case 'aggregate':       return '<span class="badge badge-agg">🟠 聚合·Stage 1.5 展开</span>';
+    case 'changed_or_gone': return '<span class="badge badge-gone">🔴 现状已变·需替换</span>';
+    default:                return '';
+  }
+}
+
+// isLocked 必去 Set
+const lockedSet = new Set();
+function toggleLock(btn, id) {
+  if (lockedSet.has(id)) {
+    lockedSet.delete(id);
+    btn.textContent = '🔓 设为必去';
+    btn.closest('.act-card').classList.remove('card-locked');
+  } else {
+    lockedSet.add(id);
+    btn.textContent = '🔒 已设必去';
+    btn.closest('.act-card').classList.add('card-locked');
+  }
+}
+
+// 出行交通方式联动
+function toggleTransportNote() {
+  const mode = document.querySelector('[name="transport_mode"]:checked')?.value;
+  document.getElementById('transport-pass-note').style.display = (mode === 'pass') ? 'block' : 'none';
+  document.getElementById('transport-rental-note').style.display = (mode === 'rental') ? 'block' : 'none';
+}
+
+// 预算紧度自动判定
+function checkBudgetTightness() {
+  const total = parseFloat(document.querySelector('[name="budget_total"]')?.value) || 0;
+  const days = _PROFILE.days || 1;
+  const perDay = total / days;
+  let tight = false;
+  if (_PROFILE.country_code === 'CN') {
+    if (_PROFILE.city_tier === 'tier1') tight = perDay < 800;
+    else tight = perDay < 500;
+  } else {
+    tight = perDay < 100; // USD 估算
+  }
+  document.getElementById('budget-warning').style.display = (total > 0 && tight) ? 'block' : 'none';
+}
+
+// solo 独行联动
+function initSoloSection() {
+  const peopleInput = document.querySelector('[name="people"]');
+  if (!peopleInput) return;
+  function updateSolo() {
+    const v = parseInt(peopleInput.value);
+    document.getElementById('solo-section').style.display = (v === 1) ? 'block' : 'none';
+  }
+  peopleInput.addEventListener('change', updateSolo);
+  peopleInput.addEventListener('input', updateSolo);
+  // 初始化时也判断一次（草稿恢复后）
+  updateSolo();
+}
+
+/* ============ 渲染 ============ */
+
+function renderThemes() {
+  const ct = document.getElementById('themes-grid');
+  ct.innerHTML = '';
+  DATA.themes.forEach(t => {
+    const lbl = document.createElement('label');
+    lbl.className = 'theme-card';
+    lbl.innerHTML = `
+      <input type="checkbox" name="theme" value="${t.id}">
+      <div class="emoji">${t.e}</div>
+      <div class="name">${t.n}</div>
+    `;
+    ct.appendChild(lbl);
+  });
+}
+
+function renderRisks() {
+  const ct = document.getElementById('risks-list');
+  const generic = DATA.risks.filter(r => r.scope === 'generic');
+  const specific = DATA.risks.filter(r => r.scope === 'specific');
+  ct.innerHTML = `
+    <h3 style="font-size:13px;color:var(--hot-red);margin:6px 0;">🎯 目的地特定</h3>
+    ${specific.map(renderRisk).join('')}
+    <h3 style="font-size:13px;color:var(--green);margin:12px 0 6px;">🌐 通用</h3>
+    ${generic.map(renderRisk).join('')}
+  `;
+}
+
+function renderRisk(r) {
+  return `
+    <div class="risk-block ${r.scope === 'generic' ? 'generic' : ''}">
+      <div class="title">${r.title}</div>
+      <div class="desc">${r.desc}</div>
+      ${r.options.map(o => `<label><input type="radio" name="${r.id}" value="${o.v}"> ${o.l}</label>`).join('')}
+    </div>
+  `;
+}
+
+function renderActivities() {
+  const ct = document.getElementById('activities-list');
+  ct.innerHTML = '';
+  Object.entries(DATA.activities).forEach(([gid, group]) => {
+    if (!group.items || group.items.length === 0) {
+      ct.appendChild(el(`<div class="group-empty">
+        <p class="empty-note">该城市暂无典型「${group.name}」候选 · Stage 1.5 可补充 · 跳过不影响行程</p>
+      </div>`));
+      return;
+    }
+    ct.appendChild(el(`
+      <div class="group-header">
+        <h3>${group.name}（${group.items.length} 项）</h3>
+        <button class="skip-group-btn" onclick="skipGroup('act', '${gid}')">🚫 整组跳过</button>
+      </div>
+    `));
+    group.items.forEach(a => ct.appendChild(renderActCard(a)));
+  });
+}
+
+function renderActCard(a) {
+  const etype = a.entity_type || 'storefront';
+  const wrap = document.createElement('div');
+  wrap.className = 'card act-card' + (etype === 'changed_or_gone' ? ' card-gone' : '');
+  if (lockedSet.has(a.id)) wrap.classList.add('card-locked');
+  const tagBadge = a.isOld ? `<div class="old-list-tag">🔴 旧清单</div>` : `<div class="claude-rec">🤖 ${a.claude_rec}</div>`;
+  const defaultValue = a.isOld ? '必去' : '';
+  const entityBadge = getEntityBadge(etype);
+  wrap.innerHTML = `
+    ${tagBadge}
+    <h4>${a.name}<span class="tag">${a.tag}</span>${entityBadge}</h4>
+    <div class="highlight">✨ ${a.highlight}</div>
+    <div class="info">📍 ${a.city}</div>
+    <div class="links">
+      <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.name)}" target="_blank">🗺️ 地图</a>
+      <a href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(a.name)}" target="_blank">🔍 图</a>
+      <a href="https://www.dianping.com/search/keyword/24/0_${encodeURIComponent(a.name)}" target="_blank">⭐ 大众点评</a>
+    </div>
+    <div class="decision" data-act-id="${a.id}" data-region="${a.region}" data-name="${a.name}">
+      <label><input type="radio" name="act_${a.id}" value="必去" ${defaultValue === '必去' ? 'checked' : ''} onchange="onDecisionChange()"> ✓ 必去</label>
+      <label><input type="radio" name="act_${a.id}" value="备选" onchange="onDecisionChange()"> △ 备选</label>
+      <label><input type="radio" name="act_${a.id}" value="不去" onchange="onDecisionChange()"> ✗ 不去</label>
+      <label><input type="radio" name="act_${a.id}" value="未定" ${!defaultValue ? 'checked' : ''} onchange="onDecisionChange()"> ? 未定</label>
+    </div>
+    <button class="btn-lock" data-id="${a.id}" onclick="toggleLock(this, '${a.id}')">
+      ${lockedSet.has(a.id) ? '🔒 已设必去' : '🔓 设为必去'}
+    </button>
+    <textarea class="note" name="act_${a.id}_note" placeholder="备注..."></textarea>
+  `;
+  return wrap;
+}
+
+function renderFoods() {
+  const ct = document.getElementById('foods-list');
+  ct.innerHTML = '';
+  Object.entries(DATA.foods).forEach(([gid, group]) => {
+    if (!group.items || group.items.length === 0) {
+      ct.appendChild(el(`<div class="group-empty">
+        <p class="empty-note">该城市暂无典型「${group.name}」候选 · Stage 1.5 可补充 · 跳过不影响行程</p>
+      </div>`));
+      return;
+    }
+    ct.appendChild(el(`
+      <div class="group-header">
+        <h3>${group.name}</h3>
+        <button class="skip-group-btn" onclick="skipGroup('food', '${gid}')">🚫 整组跳过</button>
+      </div>
+    `));
+    group.items.forEach(f => ct.appendChild(renderFoodCard(f)));
+  });
+}
+
+function renderFoodCard(f) {
+  const wrap = document.createElement('div');
+  wrap.className = 'card';
+  const slotLabels = { breakfast: '早', lunch: '午', dinner: '晚', snack: '下午茶', late: '宵夜' };
+  const slots = (f.meal || []).map(s => `<span class="meal-slot">${slotLabels[s] || s}</span>`).join('');
+  const tagBadge = f.isOld ? `<div class="old-list-tag">🔴 旧清单</div>` : `<div class="claude-rec">🤖 ${f.claude_rec}</div>`;
+  const defaultValue = f.isOld ? '必吃' : '';
+  // v2.3 entity_type 四态徽章
+  const etype = f.entity_type || 'storefront';
+  const entityBadge = getEntityBadge(etype);
+  if (etype === 'changed_or_gone') wrap.classList.add('card-gone');
+  wrap.innerHTML = `
+    ${tagBadge}
+    <h4>${f.name}<span class="tag">· ${f.area}</span>${entityBadge}</h4>
+    <div style="margin:4px 0;">${slots}</div>
+    <div class="highlight">${f.desc}</div>
+    <div class="links">
+      <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.name)}" target="_blank">🗺️ 地图</a>
+      <a href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(f.name)}" target="_blank">🔍 图</a>
+      <a href="https://www.dianping.com/search/keyword/24/0_${encodeURIComponent(f.name)}" target="_blank">⭐ 大众点评</a>
+    </div>
+    <div class="decision" data-food-id="${f.id}" data-area="${f.area}" data-name="${f.name}">
+      <label><input type="radio" name="food_${f.id}" value="必吃" ${defaultValue === '必吃' ? 'checked' : ''} onchange="onDecisionChange()"> ✓ 必吃</label>
+      <label><input type="radio" name="food_${f.id}" value="备选" onchange="onDecisionChange()"> △ 备选</label>
+      <label><input type="radio" name="food_${f.id}" value="不吃" onchange="onDecisionChange()"> ✗ 不吃</label>
+      <label><input type="radio" name="food_${f.id}" value="未定" ${!defaultValue ? 'checked' : ''} onchange="onDecisionChange()"> ? 未定</label>
+    </div>
+    <textarea class="note" name="food_${f.id}_note" placeholder="备注..."></textarea>
+  `;
+  return wrap;
+}
+
+function renderRegionsSummary() {
+  const ct = document.getElementById('regions-summary');
+  const regions = {};
+
+  document.querySelectorAll('[data-act-id]').forEach(d => {
+    const v = document.querySelector(`[name="act_${d.dataset.actId}"]:checked`);
+    if (v && (v.value === '必去' || v.value === '备选')) {
+      const r = d.dataset.region || 'all';
+      if (!regions[r]) regions[r] = { activities: [], foods: [] };
+      regions[r].activities.push({ name: d.dataset.name, level: v.value });
+    }
+  });
+  document.querySelectorAll('[data-food-id]').forEach(d => {
+    const v = document.querySelector(`[name="food_${d.dataset.foodId}"]:checked`);
+    if (v && (v.value === '必吃' || v.value === '备选')) {
+      const r = (d.dataset.area || '').includes('五星') ? 'wuxing' :
+                (d.dataset.area || '').includes('青云') ? 'qingyun' :
+                (d.dataset.area || '').includes('江景') || (d.dataset.area || '').includes('谷埠') ? 'yufeng' :
+                (d.dataset.area || '').includes('高铁') ? 'station' : 'other';
+      if (!regions[r]) regions[r] = { activities: [], foods: [] };
+      regions[r].foods.push({ name: d.dataset.name, level: v.value });
+    }
+  });
+
+  if (Object.keys(regions).length === 0) {
+    ct.innerHTML = '<div class="region-empty">在 §3、§4 选了"必去/必吃"后，这里会自动汇总你涉及的片区</div>';
+    return;
+  }
+
+  const labels = { wuxing: '⭐ 核心商圈', yufeng: '🌊 江景区', qingyun: '🌅 市场区', station: '🚄 交通枢纽附近', all: '🌐 全市', other: '📍 其他' };
+  let html = '';
+  Object.entries(regions).forEach(([rid, info]) => {
+    html += `
+      <div class="region-summary">
+        <h4>${labels[rid] || rid}<span class="count">${info.activities.length} 个活动 · ${info.foods.length} 家店</span></h4>
+        <ul>
+          ${info.activities.map(a => `<li>${a.level} ${a.name}</li>`).join('')}
+          ${info.foods.map(f => `<li>${f.level} ${f.name}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+  });
+  html += `
+    <div class="field" style="margin-top:12px;">
+      <label class="q">🏨 住宿主片区？<span style="font-size:11px;color:var(--green);">🤖 建议选活动密度最高的</span></label>
+      <input type="text" name="hotel_main_region" placeholder="如：核心商圈 / 江景区 / 老城区">
+    </div>
+  `;
+  ct.innerHTML = html;
+}
+
+function renderShopping() {
+  const ct = document.getElementById('shopping-list');
+  ct.innerHTML = Object.entries(DATA.shopping).map(([cid, cat]) => `
+    <div class="shop-cat">
+      <h3>${cat.name}</h3>
+      <div class="shop-grid">
+        ${cat.items.map(s => `
+          <label>
+            <input type="checkbox" name="shop_${s.id}"> ${s.n}
+            <small>${s.place}</small>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function skipGroup(type, gid) {
+  const skipVal = type === 'act' ? '不去' : '不吃';
+  const items = type === 'act' ? DATA.activities[gid]?.items : DATA.foods[gid]?.items;
+  if (!items) return;
+  items.forEach(i => {
+    const r = document.querySelector(`[name="${type}_${i.id}"][value="${skipVal}"]`);
+    if (r) r.checked = true;
+  });
+  onDecisionChange();
+  toast('整组已跳过');
+}
+
+function onDecisionChange() { renderRegionsSummary(); saveDraft(); updateProgress(); }
+
+/* LocalStorage */
+const STORAGE_KEY = 'q1_v2_{{TRIP_ID}}';
+function saveDraft() {
+  const data = {};
+  document.querySelectorAll('input, select, textarea').forEach(el => {
+    if (!el.name) return;
+    if (el.type === 'radio') { if (el.checked) data[el.name] = el.value; }
+    else if (el.type === 'checkbox') {
+      if (el.checked) {
+        if (data[el.name] === undefined) data[el.name] = [];
+        if (!Array.isArray(data[el.name])) data[el.name] = [data[el.name]];
+        data[el.name].push(el.value);
+      }
+    } else { if (el.value) data[el.name] = el.value; }
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  document.getElementById('saved-info').textContent = '草稿已保存 · ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+function loadDraft() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    Object.entries(data).forEach(([name, val]) => {
+      document.querySelectorAll(`[name="${name}"]`).forEach(el => {
+        if (el.type === 'radio') { if (el.value === val) el.checked = true; }
+        else if (el.type === 'checkbox') {
+          if (Array.isArray(val)) { if (val.includes(el.value)) el.checked = true; }
+          else { if (el.value === val) el.checked = true; }
+        } else { el.value = val; }
+      });
+    });
+  } catch(e){}
+}
+function clearDraft() {
+  if (!confirm('确定清空所有草稿？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+function updateProgress() {
+  let done = 0;
+  if (document.querySelector('[name="train_out"]:checked') && document.querySelector('[name="hotel_zone"]:checked')) done++;
+  if (document.querySelectorAll('[name="theme"]:checked').length > 0) done++;
+  if (DATA.risks.some(r => document.querySelector(`[name="${r.id}"]:checked`))) done++;
+  if ([...document.querySelectorAll('[name^="act_"]:checked')].some(i => i.value !== '未定')) done++;
+  if ([...document.querySelectorAll('[name^="food_"]:checked')].some(i => i.value !== '未定')) done++;
+  if (document.querySelector('[name="hotel_main_region"]')?.value) done++;
+  if (document.querySelectorAll('[name^="shop_"]:checked').length > 0) done++;
+  if ([...document.querySelectorAll('[name^="open_"]')].some(i => i.value)) done++;
+  const pct = Math.round(done / 8 * 100);
+  document.getElementById('progress').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = `${pct}% · ${done}/8 章`;
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function getVal(name) {
+  const c = document.querySelector(`[name="${name}"]:checked`) || document.querySelector(`[name="${name}"]`);
+  return c ? c.value : '';
+}
+function getMulti(name) {
+  return [...document.querySelectorAll(`[name="${name}"]:checked`)].map(e => e.value);
+}
+
+function generateMarkdown() {
+  const L = [];
+  L.push(`# {{DESTINATION}} {{DAYS}} 天 · Q1 决策清单`);
+  L.push(`> 导出 ${new Date().toLocaleString('zh-CN')}`);
+  L.push('');
+
+  L.push('## 0 · 基础');
+  L.push(`- 出发：${getVal('origin')}`);
+  L.push(`- 日期：${getVal('dates')}`);
+  L.push(`- 去程高铁：${getVal('train_out')}`);
+  L.push(`- 返程高铁：${getVal('train_back')}`);
+  L.push(`- 酒店片区：${getVal('hotel_zone')}`);
+  L.push(`- 酒店预算：${getVal('budget')}`);
+  // 出行交通方式
+  const tmodeMap = { transit: '公共交通为主', pass: '需要区域通票', rental: '考虑租车自驾', taxi: '以打车为主' };
+  const tmode = getVal('transport_mode') || 'transit';
+  L.push(`- 目的地交通方式：${tmodeMap[tmode] || tmode}`);
+  if (tmode === 'pass' && getVal('pass_hint')) L.push(`  - 通票方向：${getVal('pass_hint')}`);
+  if (tmode === 'rental' && getVal('rental_hint')) L.push(`  - 租车情况：${getVal('rental_hint')}`);
+
+  // 预算紧度
+  const budgetTotal = parseFloat(document.querySelector('[name="budget_total"]')?.value) || 0;
+  if (budgetTotal > 0) {
+    const days = _PROFILE.days || 1;
+    const perDay = budgetTotal / days;
+    let tightness = 'loose';
+    if (_PROFILE.country_code === 'CN') {
+      if (_PROFILE.city_tier === 'tier1') tightness = perDay < 800 ? 'tight' : (perDay < 1200 ? 'medium' : 'loose');
+      else tightness = perDay < 500 ? 'tight' : (perDay < 800 ? 'medium' : 'loose');
+    } else {
+      tightness = perDay < 100 ? 'tight' : (perDay < 200 ? 'medium' : 'loose');
+    }
+    L.push(`- 总预算：¥${budgetTotal}（每日均摊 ¥${Math.round(perDay)}）`);
+    L.push(`- 预算紧度：${tightness}`);
+  }
+
+  L.push(`- 特殊需求：${getVal('special_needs') || '无'}`);
+
+  // 独行偏好（人数=1 时导出）
+  const people = parseInt(document.querySelector('[name="people"]')?.value) || 0;
+  if (people === 1) {
+    L.push('');
+    L.push('## 独行偏好');
+    const soloMealMap = { small_restaurant: '独行友好小馆', counter: '吧台/料理台', shared_table: '拼桌可接受', any: '不在意' };
+    const soloMeal = getVal('solo_meal');
+    L.push(`- 正餐方式：${soloMealMap[soloMeal] || soloMeal || '_未选_'}`);
+    const soloNight = getVal('solo_night');
+    L.push(`- 夜间边界：${soloNight === 'none' ? '无限制（含深夜场）' : (soloNight || '_未选_')}`);
+    const soloSafety = document.querySelector('[name="solo_safety"]:checked');
+    L.push(`- 安全提醒：${soloSafety ? '是' : '否'}`);
+  }
+
+  L.push('');
+
+  L.push('## 1 · 主题偏好');
+  const themes = getMulti('theme');
+  if (themes.length === 0) L.push('_未选_');
+  else themes.forEach(t => {
+    const th = DATA.themes.find(x => x.id === t);
+    if (th) L.push(`- ${th.e} ${th.n}`);
+  });
+  L.push('');
+
+  L.push('## 2 · 风险决策');
+  DATA.risks.forEach(r => {
+    const v = getVal(r.id);
+    const opt = r.options.find(o => o.v === v);
+    L.push(`- **${r.title}**：${opt ? opt.l : '_未选_'}`);
+  });
+  L.push('');
+
+  L.push('## 3 · 活动选择');
+  Object.entries(DATA.activities).forEach(([gid, g]) => {
+    if (!g.items || g.items.length === 0) return;
+    const groups = { '必去':[], '备选':[], '不去':[] };
+    g.items.forEach(a => {
+      const v = getVal('act_' + a.id);
+      const note = getVal('act_' + a.id + '_note');
+      const lockedTag = lockedSet.has(a.id) ? ' [LOCKED]' : '';
+      if (groups[v]) groups[v].push(`  - ${a.name}${lockedTag}${note ? ' — ' + note : ''}`);
+    });
+    L.push(`### ${g.name}`);
+    if (groups['必去'].length) { L.push('✓ 必去'); L.push(groups['必去'].join('\n')); }
+    if (groups['备选'].length) { L.push('△ 备选'); L.push(groups['备选'].join('\n')); }
+    if (groups['不去'].length) { L.push('✗ 不去'); L.push(groups['不去'].join('\n')); }
+    L.push('');
+  });
+
+  L.push('## 4 · 美食选择');
+  Object.entries(DATA.foods).forEach(([gid, g]) => {
+    const groups = { '必吃':[], '备选':[], '不吃':[] };
+    g.items.forEach(f => {
+      const v = getVal('food_' + f.id);
+      const note = getVal('food_' + f.id + '_note');
+      if (groups[v]) groups[v].push(`  - ${f.name}${note ? ' — ' + note : ''}`);
+    });
+    L.push(`### ${g.name}`);
+    if (groups['必吃'].length) { L.push('✓ 必吃'); L.push(groups['必吃'].join('\n')); }
+    if (groups['备选'].length) { L.push('△ 备选'); L.push(groups['备选'].join('\n')); }
+    if (groups['不吃'].length) { L.push('✗ 不吃'); L.push(groups['不吃'].join('\n')); }
+    L.push('');
+  });
+
+  // v2.2 #17 宵夜偏好导出
+  L.push('## 4.4 · 宵夜偏好');
+  L.push(`- 频次：${getVal('night_freq') || '_未选_'}`);
+  const nightTypes = getMulti('night_types');
+  L.push(`- 偏好类型：${nightTypes.length ? nightTypes.join(' / ') : '_未选_'}`);
+  L.push(`- 时段：${getVal('night_time') || '_未选_'}`);
+  L.push('');
+
+  L.push('## 5 · 住宿主片区');
+  L.push(`- ${getVal('hotel_main_region') || '_未填_'}`);
+  L.push('');
+
+  L.push('## 6 · 购物 · 特产');
+  document.querySelectorAll('[name^="shop_"]:checked').forEach(i => L.push(`- ✓ ${i.name.replace('shop_', '')}`));
+  L.push('');
+
+  L.push('## 7 · 开放想法');
+  ['worry', 'hope', 'question', 'add'].forEach(k => {
+    const v = getVal('open_' + k);
+    if (v) L.push(`- **${k}**: ${v}`);
+  });
+  L.push('');
+
+  // v2.3 §3.10 雨天态度
+  const wtMap = { high: '晴天控（雨天优先室内）', medium: '适中（少量雨天不影响）', low: '雨天探险型', flex: '临场决定' };
+  const wt = getVal('weather_tolerance') || 'medium';
+  L.push(`## 0.x · 雨天态度`);
+  L.push(`- weather_tolerance: ${wt}（${wtMap[wt] || wt}）`);
+  L.push('');
+
+  L.push('---');
+  L.push('> 🤖 **请 Claude 基于以上生成分析报告**：酒店推荐 4 选 1 / 餐饮清单（按推荐度排）/ 动线 / 风险锁定清单');
+
+  const md = L.join('\n');
+  document.getElementById('export-output').value = md;
+  if (navigator.clipboard) navigator.clipboard.writeText(md).then(() => toast('已复制 ✓'));
+  return md;
+}
+
+function downloadMarkdown() {
+  const md = generateMarkdown();
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'decisions-{{TRIP_ID}}.md';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+renderThemes();
+renderRisks();
+renderActivities();
+renderFoods();
+renderRegionsSummary();
+renderShopping();
+loadDraft();
+updateProgress();
+initSoloSection();
+checkBudgetTightness();
+
+let saveTimer;
+document.addEventListener('input', () => {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { saveDraft(); updateProgress(); renderRegionsSummary(); }, 400);
+});
+document.addEventListener('change', () => { saveDraft(); updateProgress(); renderRegionsSummary(); });
+</script>
+
+</body>
+</html>
+</parameter>

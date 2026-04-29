@@ -1,0 +1,11 @@
+{
+  "name": "travel-itinerary",
+  "version": "2.3.0",
+  "description": "4-stage workflow for generating interactive HTML travel guides for any destination. Handles intake Q&A, offline decision questionnaires (Q1/Q2), and renders a self-contained trip.html with Edit Mode, weather awareness, budget tracker, and solo-traveler safety layer.",
+  "author": {
+    "name": "logic0512",
+    "url": "https://github.com/logic0512"
+  },
+  "license": "MIT",
+  "skills": "."
+}

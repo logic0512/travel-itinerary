@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=3">
+<title>🍜 柳州 3 天 · 攻略</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  /* === v2.3 链接 CSS === */
+  .link-primary  { background: #2980b9; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; text-decoration: none; display: inline-block; margin: 2px; }
+  .link-gaode    { background: #27ae60; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; text-decoration: none; display: inline-block; margin: 2px; }
+  .link-fallback { color: #999; font-size: 11px; text-decoration: none; display: inline-block; margin: 2px; }
+  .link-ig       { color: #555; font-size: 12px; text-decoration: none; display: inline-block; margin: 2px; }
+  .link-video    { color: #555; font-size: 12px; text-decoration: none; display: inline-block; margin: 2px; }
+  .link-maps     { background: #888; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 12px; text-decoration: none; display: inline-block; margin: 2px; }
+
+  /* === v2.3 brand 找分店按钮 === */
+  .btn-find-branch { display: inline-block; margin-top: 6px; padding: 4px 10px; background: #2980b9; color: #fff; border-radius: 4px; font-size: 12px; text-decoration: none; }
+
+  /* === v2.3 day-nav 片区色点 === */
+  .region-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+
+  /* === v2.3 预算追踪卡 === */
+  .budget-card { border-top: 3px solid #f39c12; }
+  .budget-summary { font-size: 13px; margin-bottom: 8px; }
+  .budget-days { display: flex; flex-wrap: wrap; gap: 8px; }
+  .budget-day { font-size: 12px; }
+  .budget-input { width: 60px; border: none; border-bottom: 1px solid #ddd; text-align: right; }
+  .remain { font-weight: bold; font-size: 15px; }
+
+  /* === v2.3 day-specific reminders === */
+  .day-reminders { background: #fef9e7; border-left: 4px solid #f39c12; padding: 8px 12px; margin-bottom: 10px; border-radius: 0 4px 4px 0; }
+  .day-reminder-item { font-size: 13px; padding: 2px 0; }
+
+  /* === v2.3 solo reminders === */
+  .solo-reminders { background: #f4f6f7; border-radius: 6px; padding: 10px 14px; margin-top: 12px; }
+
+  /* === v2.3 Edit Mode === */
+  body.edit-mode .timeline-item { cursor: pointer; }
+  body.edit-mode .edit-controls { display: block !important; }
+  .status-changed   { border-left: 3px solid #f39c12; background: #fef9e7; }
+  .status-cancelled { opacity: 0.5; text-decoration: line-through; }
+  .edit-inline-input { width: 100%; border: 1px solid #3498db; border-radius: 3px; padding: 3px 6px; font-size: inherit; }
+
+  /* === v2.3 region 色标默认值 === */
+  :root {
+    --region-default: #888888;
+    /* 具体片区色由 theme.css 定义，如 --region-huangpu: #C4915A */
+  }
+
+  /* === v2.3 §5.10 天气感知 === */
+  .weather-bar { display:flex; align-items:flex-start; gap:8px; padding:7px 12px; margin-bottom:8px; background:#f4f6f7; border-radius:6px; font-size:12px; }
+  .weather-bar.rain-risk  { background:#eaf4fb; border-left:3px solid #2980b9; }
+  .weather-bar.heavy-rain { background:#f0e8f7; border-left:3px solid #8e44ad; }
+  .weather-icon { font-size:20px; line-height:1; }
+  .weather-info { flex:1; }
+  .weather-temp { font-size:12.5px; font-weight:600; }
+  .weather-advice { font-size:11px; color:#888; margin-left:6px; }
+  .outdoor-badge { display:inline-block; font-size:10px; padding:1px 5px; background:#eafaf1; color:#1e8449; border-radius:8px; margin-left:4px; vertical-align:middle; }
+  .indoor-alt-link { display:inline-block; margin-top:4px; font-size:11.5px; color:#2980b9; background:#eaf4fb; padding:3px 8px; border-radius:3px; text-decoration:none; }
+
+  /* 关键时间节点 */
+  .tl-item.is-critical > .tl-time { color:#e74c3c; font-weight:700; }
+  .tl-item.is-critical { border-left:3px solid #e74c3c; padding-left:6px; }
+  .critical-reason-bar { font-size:11px; color:#c0392b; background:#fff0ed; padding:3px 8px; border-radius:3px; margin-top:4px; }
+  /* 现金提醒 */
+  .cash-badge { display:inline-block; font-size:10px; padding:1px 5px; background:#fef9e7; color:#856404; border:1px solid #fcd34d; border-radius:8px; margin-left:4px; vertical-align:middle; }
+  .cash-note { font-size:11.5px; color:#856404; background:#fef9e7; padding:3px 8px; border-radius:3px; margin-top:4px; display:inline-block; }
+</style>
+</head>
+<body>
+
+<!-- v2.3 Edit Toolbar -->
+<div id="edit-toolbar" style="display:none; position:sticky; top:0; z-index:999;
+  background:#2c3e50; color:#fff; padding:8px 16px; gap:12px; align-items:center;">
+  <span style="font-size:13px;">✏️ 编辑模式</span>
+  <button onclick="exportEditSummary()" style="background:#27ae60; color:#fff; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">
+    📋 导出改动摘要
+  </button>
+  <button onclick="toggleEditMode()" style="background:#e74c3c; color:#fff; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">
+    ✅ 完成编辑
+  </button>
+</div>
+
+<header class="top-bar">
+  <div>
+    <div class="dest">🍜 柳州 3 天攻略</div>
+    <div class="dates">2026.5.2 → 5.4 · 情侣 2 人 · 深圳 ⇄ 柳州</div>
+  </div>
+  <div class="day-chip">Day <strong id="current-day">1</strong>/3</div>
+</header>
+
+<div class="sticky-ctx" id="sticky-ctx"></div>
+
+<div class="quick-bar">
+  <button class="quick-btn" onclick="openModal('emergency')"><span class="ico">🚨</span>紧急</button>
+  <button class="quick-btn" onclick="openModal('info')"><span class="ico">📖</span>须知</button>
+  <button class="quick-btn" onclick="openModal('prep')"><span class="ico">✅</span>准备</button>
+  <button class="quick-btn" onclick="openModal('tickets')"><span class="ico">🎫</span>票据</button>
+</div>
+
+<nav class="day-nav" id="day-nav"></nav>
+
+<div id="memory-banner"></div>
+
+<!-- v2.3 速查卡区域（含预算追踪） -->
+<div id="quick-cards"></div>
+
+<main id="days"></main>
+
+<!-- Modal -->
+<div class="modal" id="modal" onclick="if(event.target===this) closeModal()">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modal-title">—</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div class="floater">
+  <button onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回顶">↑</button>
+  <button onclick="adjFont(-1)" title="字号缩小">A-</button>
+  <button onclick="adjFont(1)" title="字号放大">A+</button>
+  <button class="print-btn" onclick="window.print()" title="打印">🖨️</button>
+</div>
+
+<!-- v2.3 Edit Mode 触发按钮 -->
+<button id="edit-toggle" onclick="toggleEditMode()" style="
+  position:fixed; bottom:20px; right:20px; z-index:1000;
+  background:#2980b9; color:#fff; border:none; border-radius:50%;
+  width:48px; height:48px; font-size:20px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.3);">
+  ✏️
+</button>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* === 数据加载（从同目录 trip.json 拉 · 用 fetch） === */
+let TRIP = null;
+// v2.2 #22 LocalStorage trip_id 前缀
+let TRIP_ID = 'default';
+function slug(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9一-龥]+/g, '-').replace(/^-|-$/g, '') || 'trip'; }
+function computeTripId() {
+  const meta = TRIP?.meta || {};
+  if (meta.trip_id) return meta.trip_id;
+  const dest = slug(meta.destination || 'trip');
+  const ym = (meta.dates?.start || '').slice(0, 7).replace('-', '');
+  return ym ? `${dest}-${ym}` : dest;
+}
+function lsKey(name) { return `trip_${TRIP_ID}_${name}`; }
+
+// <!-- v2.2 #24 archetype 行程档位 -->
+let ARCHETYPE = 'medium';
+const ARCHETYPE_LIMITS = {
+  short:  { reminders: 8,  altPerSection: 5 },
+  medium: { reminders: 12, altPerSection: 12 },
+  long:   { reminders: Infinity, altPerSection: Infinity }
+};
+function archetypeLimit(key) {
+  return (ARCHETYPE_LIMITS[ARCHETYPE] || ARCHETYPE_LIMITS.medium)[key];
+}
+const TILE = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+const dotIcon = L.divIcon({ html: '<div class="pin-dot"></div>', iconSize: [11,11], iconAnchor: [5,5] });
+
+function encode(s) { return encodeURIComponent(s); }
+function mapApple(q)  { return `https://maps.apple.com/?q=${encode(q)}`; }
+function mapGoogle(q) { return `https://www.google.com/maps/search/?api=1&query=${encode(q)}`; }
+function mapAmap(q)   { return `https://uri.amap.com/search?keyword=${encode(q)}`; }
+function imgSearch(q) { return `https://www.google.com/search?tbm=isch&q=${encode(q)}`; }
+
+/* === v2.3 #8 region 数据驱动（删除字符串匹配，直接从 cards 读取） === */
+function getRegion(cardId) {
+  return TRIP?.cards?.[cardId]?.region ?? 'default';
+}
+
+/* === 上下文贴条 === */
+function renderStickyCtx() {
+  const g = TRIP.global;
+  const ct = document.getElementById('sticky-ctx');
+  ct.innerHTML = `
+    <span>📞 <strong>110 / 120</strong></span>
+    <span>🏛️ 柳州 12345</span>
+    <span>☔ 28-32℃ · 偶阵雨</span>
+    <span>🍜 嗦粉怕酸说『少酸笋多花生』</span>
+    <span>💴 国内行 · 微信/支付宝全通</span>
+  `;
+}
+
+/* === v2.3 #3 Day 导航（加片区色点） === */
+function renderDayNav() {
+  const nav = document.getElementById('day-nav');
+  TRIP.days.forEach((d, i) => {
+    const regionVar = d.region ? `--region-${d.region}` : '--region-default';
+    const regionColor = getComputedStyle(document.documentElement)
+      .getPropertyValue(regionVar).trim() || '#888';
+    const a = document.createElement('a');
+    a.href = `#day-${d.num}`;
+    a.dataset.day = d.num;
+    const dotSpan = `<span class="region-dot" style="background:${regionColor}"></span>`;
+    const regionLabel = d.region ? ' · ' + (d.main_region || d.region) : '';
+    a.innerHTML = `${dotSpan}<strong>D${d.num}</strong><small>${d.date.slice(5).replace('-','/')} ${d.weekday.slice(1)}${regionLabel}</small>`;
+    nav.appendChild(a);
+  });
+}
+
+/* === v2.3 #1 链接策略重写（国内/国外分支） === */
+function renderLinks(links, countryCode, cardName, metaCity) {
+  links = links || {};
+  if (countryCode === 'CN') {
+    // 国内优先级：gaode > official > ctrip > guide > fallback
+    const primary = links.gaode || links.official || links.ctrip || links.guide;
+    const parts = [];
+
+    if (primary) parts.push(`<a href="${primary}" target="_blank" class="link-primary">🔗 查看详情</a>`);
+
+    // 高德永远显示（兜底）
+    const gaodeSearch = links.gaode ||
+      `https://www.amap.com/search?query=${encode(cardName || '')}&city=${encode(metaCity || '')}`;
+    parts.push(`<a href="${gaodeSearch}" target="_blank" class="link-gaode">📍 高德导航</a>`);
+
+    // v2.4.1 删除 dianping/meituan 兜底（强制登录·已禁用）
+
+    return parts.join(' ');
+  } else {
+    // 国外：original logic
+    const primary = links.official || links.booking || links.guide;
+    const parts = [];
+    if (primary) parts.push(`<a href="${primary}" target="_blank" class="link-primary">🔗 详情</a>`);
+    if (links.ig)    parts.push(`<a href="${links.ig}"    target="_blank" class="link-ig">📸 IG</a>`);
+    if (links.video) parts.push(`<a href="${links.video}" target="_blank" class="link-video">▶ 视频</a>`);
+    // Google Maps 兜底
+    const gmaps = `https://www.google.com/maps/search/${encode(cardName || '')}`;
+    parts.push(`<a href="${gmaps}" target="_blank" class="link-maps">🗺 Maps</a>`);
+    return parts.join(' ');
+  }
+}
+
+/* === 卡片渲染 === */
+function renderCard(c, extra) {
+  if (!c) return `<div class="tl-note">（卡片未找到）</div>`;
+  const search = (c.name || '') + ' ' + (c.city_label || '');
+
+  const img = `<div class="card-img"></div>`;
+
+  // v2.3 §5.10 室外标签
+  const outdoorBadge = c.outdoor ? `<span class="outdoor-badge">🌤 室外</span>` : '';
+  // 现金提醒
+  const cashBadge = c.cash_only ? `<span class="cash-badge">💴 仅限现金</span>` : '';
+
+  const header = `
+    <div class="card-header">
+      <span class="card-name">${c.emoji || ''} ${c.name}${outdoorBadge}${cashBadge}</span>
+      <span class="card-tag">${c.city_label || ''}</span>
+    </div>
+  `;
+
+  const highlight = c.highlight ? `<div class="card-hl">✨ ${c.highlight}</div>` : '';
+
+  const dishes = c.signature_dishes && c.signature_dishes.length
+    ? `<div class="card-dishes"><strong>🍽️ 招牌：</strong>${c.signature_dishes.join(' · ')}</div>`
+    : '';
+
+  const ki = c.key_info || {};
+  const infoParts = [];
+  if (ki.hours)    infoParts.push(`<span><strong>⏰</strong>${ki.hours}</span>`);
+  if (ki.depart)   infoParts.push(`<span><strong>🚄</strong>${ki.depart} → ${ki.arrive || ''}</span>`);
+  if (ki.checkin)  infoParts.push(`<span><strong>🛎️</strong>In ${ki.checkin} / Out ${ki.checkout || ''}</span>`);
+  if (ki.price)    infoParts.push(`<span><strong>💴</strong>${ki.price}</span>`);
+  if (ki.duration) infoParts.push(`<span><strong>⏱</strong>${ki.duration}</span>`);
+  const info = infoParts.length ? `<div class="card-info">${infoParts.join('')}</div>` : '';
+
+  // v2.3 #1 使用新链接策略函数
+  const isCN = TRIP?.meta?.country_code === 'CN';
+  const metaCity = TRIP?.meta?.city || TRIP?.meta?.destination || '';
+  const linksHtml = `<div class="card-links">${renderLinks(c.links, isCN ? 'CN' : 'INTL', c.name, metaCity)}</div>`;
+
+  // 长介绍折叠
+  const intro = c.intro_paragraphs && c.intro_paragraphs.length
+    ? `<button class="card-expand-btn" onclick="toggleIntro(this)">📖 展开介绍 ▾</button>
+       <div class="card-intro">${c.intro_paragraphs.map(p => `<p>${p}</p>`).join('')}</div>`
+    : '';
+
+  const noteHtml = extra ? `<div class="card-note">💡 ${extra}</div>` : '';
+
+  // v2.3 #2 brand 找最近分店按钮
+  let findBranchHtml = '';
+  if (c.entity_type === 'brand') {
+    const searchUrl = `https://www.amap.com/search?query=${encode(c.name)}&city=${encode(metaCity)}`;
+    findBranchHtml = `<a class="btn-find-branch" href="${searchUrl}" target="_blank">📍 找最近分店（高德）</a>`;
+  }
+
+  // 现金金额说明（cash_only=true 且有 cash_amount 时显示）
+  const cashNoteHtml = (c.cash_only && c.cash_amount)
+    ? `<div class="cash-note">💴 备现金：${c.cash_amount}</div>` : '';
+
+  // v2.3 §5.10 室内备选链接（c.outdoor=true 且有 indoor_alt 时显示）
+  let indoorAltHtml = '';
+  if (c.outdoor && c.indoor_alt) {
+    const altCard = TRIP?.cards?.[c.indoor_alt];
+    const altName = altCard ? altCard.name : c.indoor_alt;
+    indoorAltHtml = `<a class="indoor-alt-link">☔ 雨天室内替换：${altName}</a>`;
+  }
+
+  return `
+    <div class="card-spot">
+      ${img}
+      ${header}
+      ${highlight}
+      ${dishes}
+      ${info}
+      ${linksHtml}
+      ${intro}
+      ${noteHtml}
+      ${cashNoteHtml}
+      ${indoorAltHtml}
+      ${findBranchHtml}
+    </div>
+  `;
+}
+
+function toggleIntro(btn) {
+  const d = btn.nextElementSibling;
+  if (!d) return;
+  const open = d.classList.toggle('open');
+  btn.textContent = open ? '📖 收起介绍 ▴' : '📖 展开介绍 ▾';
+}
+
+/* === v2.3 §5.10 天气感知展示层 === */
+function getWeatherIcon(cond) {
+  if (!cond) return '🌤️';
+  const c = String(cond).toLowerCase();
+  if (c.includes('sunny') || c.includes('晴')) return '☀️';
+  if (c.includes('heavy_rain') || c.includes('大雨') || c.includes('暴雨')) return '⛈️';
+  if (c.includes('thunder') || c.includes('雷')) return '⛈️';
+  if (c.includes('rain') || c.includes('雨')) return '🌧️';
+  if (c.includes('cloud') || c.includes('多云') || c.includes('阴')) return '☁️';
+  if (c.includes('snow') || c.includes('雪')) return '❄️';
+  if (c.includes('fog') || c.includes('雾')) return '🌫️';
+  return '🌤️';
+}
+
+function renderWeatherBar(day) {
+  const w = day.weather;
+  if (!w) return '';
+  const icon = getWeatherIcon(w.condition);
+  const rain = Number(w.rain_probability) || 0;
+  const riskClass = rain >= 80 ? 'heavy-rain' : rain >= 50 ? 'rain-risk' : '';
+  const tempStr = (w.temp_high != null || w.temp_low != null) ? `${w.temp_low ?? '?'}–${w.temp_high ?? '?'}℃` : '';
+  const rainStr = rain > 0 ? `🌧 ${rain}%` : '';
+  const adviceStr = w.advice ? ` · ${w.advice}` : '';
+
+  const outdoorSpots = (day.timeline || [])
+    .filter(item => item.card_id && TRIP.cards[item.card_id]?.outdoor)
+    .map(item => TRIP.cards[item.card_id]?.name || item.card_id);
+  const outdoorWarn = (rain >= 50 && outdoorSpots.length > 0)
+    ? `<div style="font-size:11px;color:#2471a3;margin-top:4px;">⚠️ 当天室外景点：${outdoorSpots.join(' / ')}——建议查看卡片内的雨天替换</div>`
+    : '';
+
+  return `<div class="weather-bar ${riskClass}">
+    <span class="weather-icon">${icon}</span>
+    <div class="weather-info">
+      <span class="weather-temp">${tempStr}</span>
+      ${rainStr ? `<span style="margin-left:8px;color:#2980b9;">${rainStr}</span>` : ''}
+      <span class="weather-advice">${adviceStr}</span>
+      ${outdoorWarn}
+    </div>
+  </div>`;
+}
+
+/* === v2.3 #5 Day 级提醒 bar === */
+function renderDayReminders(day) {
+  if (!day.reminders || day.reminders.length === 0) return '';
+  return `<div class="day-reminders">
+    ${day.reminders.map(r => `<div class="day-reminder-item">⚡ ${r}</div>`).join('')}
+  </div>`;
+}
+
+/* === v2.3 #7d 时间轴行（含 Edit Mode 支持） === */
+function renderTimelineItem(item, dayIdx, itemIdx) {
+  const itemId = `day_${dayIdx}_item_${itemIdx}`;
+  const edits = loadEdits();
+  const edit = edits.edits[itemId] || {};
+  const spot = edit.edited_spot || (item.card_id ? (TRIP.cards[item.card_id]?.name || item.label || '') : (item.label || ''));
+  const note = edit.edited_note !== undefined ? edit.edited_note : (item.note || '');
+  const status = edit.status || 'normal';
+
+  const time = `<div class="tl-time">${item.time || ''}</div>`;
+  const transit = item.transit_to_next
+    ? `<div class="tl-transit">${item.transit_to_next}</div>`
+    : '';
+  const criticalClass = item.is_critical ? ' is-critical' : '';
+  const criticalBar = item.is_critical && item.critical_reason
+    ? `<div class="critical-reason-bar">⚠️ ${item.critical_reason}</div>` : '';
+
+  if (item.card_id) {
+    const c = TRIP.cards[item.card_id];
+    const cardHtml = renderCard(c, item.note);
+    return `<div class="tl-item timeline-item status-${status}${criticalClass}" data-id="${itemId}">
+      ${time}
+      <div class="tl-body">
+        <div class="item-spot edit-field" data-field="spot" data-id="${itemId}" style="display:none;"></div>
+        <div class="item-note edit-field" data-field="note" data-id="${itemId}" style="display:none;"></div>
+        ${criticalBar}
+        ${cardHtml}
+        <div class="edit-controls" style="display:none;">
+          <select onchange="setItemStatus('${itemId}', this.value)">
+            <option value="normal"    ${status==='normal'     ?'selected':''}>正常</option>
+            <option value="changed"   ${status==='changed'    ?'selected':''}>已改</option>
+            <option value="cancelled" ${status==='cancelled'  ?'selected':''}>已取消</option>
+          </select>
+        </div>
+        ${transit}
+      </div>
+    </div>`;
+  }
+
+  const cls = item.type || 'note';
+  return `<div class="tl-item timeline-item status-${status}${criticalClass}" data-id="${itemId}">
+    ${time}
+    <div class="tl-body">
+      ${criticalBar}
+      <div class="tl-note ${cls}">
+        <div class="item-spot edit-field" data-field="spot" data-id="${itemId}">${spot}</div>
+        <div class="item-note edit-field" data-field="note" data-id="${itemId}">${note}</div>
+      </div>
+      <div class="edit-controls" style="display:none;">
+        <select onchange="setItemStatus('${itemId}', this.value)">
+          <option value="normal"    ${status==='normal'     ?'selected':''}>正常</option>
+          <option value="changed"   ${status==='changed'    ?'selected':''}>已改</option>
+          <option value="cancelled" ${status==='cancelled'  ?'selected':''}>已取消</option>
+        </select>
+      </div>
+      ${transit}
+    </div>
+  </div>`;
+}
+
+/* === Day section === */
+function renderDay(d, dayIdx) {
+  const section = document.createElement('section');
+  section.className = `day day-${d.num}`;
+  section.id = `day-${d.num}`;
+
+  const html = `
+    <div class="day-header" onclick="this.parentElement.classList.toggle('collapsed')">
+      <div class="num">DAY ${d.num} / 3 · ${d.date.replace(/-/g,'.')} ${d.weekday}</div>
+      <div class="date">${d.theme}<span class="status" id="status-${d.num}" style="display:none;">进行中</span></div>
+      <div class="theme">🏨 ${d.hotel || ''}${d.region_label ? ' · 📍 ' + d.region_label : ''}</div>
+    </div>
+    <div class="day-body">
+      ${renderWeatherBar(d)}
+      <div class="day-map" id="daymap-${d.num}" onclick="openDayMap(${d.num})">
+        <div class="map-hint">点我看完整路线 👆</div>
+      </div>
+      ${renderDayReminders(d)}
+      <div class="timeline">${d.timeline.map((item, itemIdx) => renderTimelineItem(item, dayIdx, itemIdx)).join('')}</div>
+      <details class="day-backup">
+        <summary>当日备用方案</summary>
+        <div class="bk-content">
+          ${d.backups?.rain ? `<p><b>🌧️ 下雨/延误：</b>${d.backups.rain}</p>` : ''}
+          ${d.backups?.other ? `<p><b>⚠️ 其他突发：</b>${d.backups.other}</p>` : ''}
+          ${d.backups?.note ? `<p><b>📝 注意：</b>${d.backups.note}</p>` : ''}
+        </div>
+      </details>
+      ${renderAlt(d)}
+    </div>
+  `;
+  section.innerHTML = html;
+  return section;
+}
+
+/* === 备选专栏 平铺 === */
+function renderAlt(d) {
+  const altSights = TRIP.alt_candidates?.sights || [];
+  const altFoods  = TRIP.alt_candidates?.foods  || [];
+
+  function attach(list, kind) {
+    return list.map(a => {
+      const c = TRIP.cards[a.card_id];
+      if (!c) return null;
+      const isNearby = (a.day_affinity || []).includes(d.num);
+      return { card: c, kind, nearby: isNearby, dist: a.distance };
+    }).filter(Boolean);
+  }
+
+  const sights = attach(altSights, 'sight');
+  const foods  = attach(altFoods, 'food');
+  if (sights.length === 0 && foods.length === 0) return '';
+
+  // 今日片区优先 → 其他日子降透明度
+  const sortFn = (a, b) => (b.nearby - a.nearby);
+  sights.sort(sortFn);
+  foods.sort(sortFn);
+  // v2.2 #24 archetype 备选专栏截断
+  const altLimit = archetypeLimit('altPerSection');
+  if (Number.isFinite(altLimit)) {
+    sights.splice(altLimit);
+    foods.splice(altLimit);
+  }
+
+  const itemHtml = (x) => `
+    <div class="alt-item ${x.nearby ? 'nearby' : 'far'}">
+      <div class="name">${x.card.emoji || ''} ${x.card.name}</div>
+      <div class="desc">${x.card.highlight || ''}</div>
+      ${x.dist ? `<span class="dist">📏 ${x.dist}</span>` : ''}
+      <a class="link" href="${mapGoogle(x.card.name + ' 柳州')}" target="_blank">→ 地图</a>
+      <a class="link" href="${imgSearch(x.card.name + ' 柳州')}" target="_blank">🔍 图</a>
+    </div>
+  `;
+
+  const sightsHtml = sights.length
+    ? `<div style="margin-bottom:10px;"><div style="font-size:11.5px;color:var(--muted);margin-bottom:5px;letter-spacing:.5px;">📍 景点 / 体验</div>${sights.map(itemHtml).join('')}</div>`
+    : '';
+  const foodsHtml = foods.length
+    ? `<div><div style="font-size:11.5px;color:var(--muted);margin-bottom:5px;letter-spacing:.5px;">🍴 美食候选</div>${foods.map(itemHtml).join('')}</div>`
+    : '';
+
+  const nearbyN = sights.filter(x => x.nearby).length + foods.filter(x => x.nearby).length;
+  const farN    = sights.length + foods.length - nearbyN;
+
+  return `
+    <div class="day-alt">
+      <div class="alt-title">附近可替换（${nearbyN} 个今日 🟢 · ${farN} 个其他日子 ⚪）</div>
+      ${sightsHtml}
+      ${foodsHtml}
+    </div>
+  `;
+}
+
+function renderDays() {
+  const main = document.getElementById('days');
+  TRIP.days.forEach((d, i) => main.appendChild(renderDay(d, i)));
+}
+
+/* === 每日地图缩略 === */
+function renderDayMapThumb(d) {
+  const coords = collectDayCoords(d);
+  if (coords.length < 2) {
+    const box = document.getElementById(`daymap-${d.num}`);
+    if (box) box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px;">本日无地图坐标 · 点击查看文字路线</div>`;
+    return;
+  }
+  const box = document.getElementById(`daymap-${d.num}`);
+  if (!box) return;
+  const map = L.map(`daymap-${d.num}`, {
+    zoomControl: false, attributionControl: false,
+    scrollWheelZoom: false, dragging: false, touchZoom: false,
+    doubleClickZoom: false, boxZoom: false, keyboard: false
+  });
+  L.tileLayer(TILE).addTo(map);
+  coords.forEach(c => L.marker([c.lat, c.lng], { icon: dotIcon }).addTo(map));
+  L.polyline(coords.map(c => [c.lat, c.lng]), {
+    color: '#c9362e', weight: 2.8, opacity: 0.78
+  }).addTo(map);
+  map.fitBounds(coords.map(c => [c.lat, c.lng]), { padding: [18, 18] });
+}
+
+function collectDayCoords(d) {
+  const coords = [];
+  d.timeline.forEach(t => {
+    if (t.card_id) {
+      const c = TRIP.cards[t.card_id];
+      if (c && c.coords) coords.push({ lat: c.coords[0], lng: c.coords[1], name: c.name, time: t.time });
+    }
+  });
+  return coords;
+}
+
+/* === Day 地图 Modal === */
+function openDayMap(dayNum) {
+  const d = TRIP.days.find(x => x.num === dayNum);
+  const coords = collectDayCoords(d);
+  const hasCoords = coords.length >= 2;
+
+  document.getElementById('modal-title').textContent = `Day ${dayNum} · ${d.theme} · 完整路线`;
+  const body = document.getElementById('modal-body');
+  body.innerHTML = `
+    ${hasCoords ? '<div class="modal-big-map" id="modal-big-map"></div>' : '<div style="padding:18px;color:var(--muted);text-align:center;font-size:12.5px;">本日无地图坐标</div>'}
+    ${hasCoords ? `<a class="modal-route-btn" href="${buildGoogleRouteUrl(coords)}" target="_blank">📍 在 Google Maps 看完整路线（公交模式）</a>` : ''}
+    <div class="modal-route-list">
+      <h4>📜 今日路线</h4>
+      ${d.timeline.map(t => {
+        const c = t.card_id ? TRIP.cards[t.card_id] : null;
+        const label = c ? (c.emoji || '') + ' ' + c.name : (t.label || '');
+        const hint = c?.highlight ? `<div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;">✨ ${c.highlight}</div>` : '';
+        const note = t.note ? `<div style="font-size:11px;color:var(--muted);">→ ${t.note}</div>` : '';
+        return `<div class="modal-route-item"><div class="t">${t.time || ''}</div><div class="s">${label}${note}${hint}</div></div>`;
+      }).join('')}
+    </div>
+  `;
+  document.getElementById('modal').classList.add('show');
+
+  if (hasCoords) {
+    setTimeout(() => {
+      const m = L.map('modal-big-map', { attributionControl: false });
+      L.tileLayer(TILE).addTo(m);
+      coords.forEach((c, i) => {
+        const icon = L.divIcon({ html: `<div class="pin-num">${i + 1}</div>`, iconSize: [24,24], iconAnchor: [12,12] });
+        L.marker([c.lat, c.lng], { icon }).bindPopup(`<b>${c.time}</b><br>${c.name}`).addTo(m);
+      });
+      L.polyline(coords.map(c => [c.lat, c.lng]), {
+        color: '#c9362e', weight: 3, opacity: 0.75, dashArray: '6,6'
+      }).addTo(m);
+      m.fitBounds(coords.map(c => [c.lat, c.lng]), { padding: [22, 22] });
+      m.invalidateSize();
+    }, 100);
+  }
+}
+
+function buildGoogleRouteUrl(coords) {
+  if (coords.length < 2) return '#';
+  const origin = coords[0].lat + ',' + coords[0].lng;
+  const dest = coords[coords.length - 1].lat + ',' + coords[coords.length - 1].lng;
+  const waypoints = coords.slice(1, -1).map(c => c.lat + ',' + c.lng).join('|');
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? '&waypoints=' + waypoints : ''}&travelmode=transit`;
+}
+
+/* === Modal 内容 === */
+function openModal(type) {
+  const title = {
+    emergency: '🚨 紧急联络',
+    info: '📖 旅游须知',
+    prep: '✅ 行前准备',
+    tickets: '🎫 票据凭证'
+  }[type];
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = buildModalContent(type);
+  document.getElementById('modal').classList.add('show');
+  if (type === 'prep')    initPrepChecks();
+  if (type === 'tickets') renderTickets();
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+function buildModalContent(type) {
+  const g = TRIP.global;
+  if (type === 'emergency') {
+    return `<div class="modal-body">
+      ${g.emergency.map(e => `
+        <div class="ticket">
+          <div class="title">${e.label}</div>
+          <div class="meta">${e.number}${e.address ? ' · ' + e.address : ''}</div>
+          <div class="ticket-actions">
+            <a href="tel:${e.number.replace(/[^\d+]/g,'')}">📞 拨打</a>
+            ${e.address ? `<a href="${mapGoogle(e.address)}" target="_blank">📍 导航</a>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+  if (type === 'info') {
+    // v2.2 #24 archetype 截断须知
+    const limit = archetypeLimit('reminders');
+    const reminders = (g.reminders || []).slice(0, limit);
+    return `<div class="modal-body">
+      ${reminders.map(r => `<h4>${r.title}</h4><p style="font-size:12.5px;line-height:1.75;color:#4a3a26;font-family:var(--font-serif);text-indent:2em;">${r.content}</p>`).join('')}
+      ${renderSoloReminders(TRIP.meta)}
+    </div>`;
+  }
+  if (type === 'prep') {
+    return `<div class="modal-body">
+      <p style="font-size:11.5px;color:var(--muted);margin-bottom:13px;font-family:var(--font-serif);">✓ 勾选保存在本地浏览器</p>
+      ${g.preparation.map(p => `<label class="prep-item"><input type="checkbox" data-prep="${encode(p.item)}"> ${p.item}</label>`).join('')}
+    </div>`;
+  }
+  if (type === 'tickets') {
+    return `<div class="modal-body" id="tickets-box"></div>`;
+  }
+  return '';
+}
+
+/* === v2.3 #6 solo_traveler reminders === */
+function renderSoloReminders(meta) {
+  if (!meta?.solo_traveler?.safety_reminders) return '';
+  const reminders = meta.global?.reminders?.solo_traveler || [
+    `末班地铁约 23:00，注意时间`,
+    `23点后建议打车，不要步行走夜路`,
+    `告知联系人你的住宿和每日行程`,
+    `夜场：保管好手机钱包`
+  ];
+  return `<div class="solo-reminders">
+    <h4>👤 独行提示</h4>
+    ${reminders.map(r => `<p>• ${r}</p>`).join('')}
+  </div>`;
+}
+
+function initPrepChecks() {
+  // v2.2 #22 LocalStorage trip_id 前缀
+  document.querySelectorAll('[data-prep]').forEach(cb => {
+    const key = lsKey('prep_' + cb.dataset.prep);
+    cb.checked = localStorage.getItem(key) === '1';
+    cb.onchange = () => localStorage.setItem(key, cb.checked ? '1' : '0');
+  });
+}
+
+/* === 票据 LocalStorage === */
+// v2.2 #22 LocalStorage trip_id 前缀 · TICKET_KEY 改为动态 lsKey()
+function getTickets() {
+  let stored = JSON.parse(localStorage.getItem(lsKey('tickets')) || 'null');
+  if (stored === null && TRIP.tickets_seed) {
+    stored = TRIP.tickets_seed.map(t => ({ name: t.name, info: t.info, url: t.url || '' }));
+    saveTickets(stored);
+  }
+  return stored || [];
+}
+function saveTickets(list) { localStorage.setItem(lsKey('tickets'), JSON.stringify(list)); }
+
+function renderTickets() {
+  const box = document.getElementById('tickets-box');
+  const list = getTickets();
+  box.innerHTML = `
+    <p style="font-size:11.5px;color:var(--muted);margin-bottom:13px;font-family:var(--font-serif);">🔒 数据保存在本地浏览器 · 换设备 / 清缓存会丢失 · 关键票据请自行备份到邮箱 / 网盘</p>
+    ${list.map((t, i) => `
+      <div class="ticket">
+        <div class="title">${t.name}</div>
+        <div class="meta">${t.info || ''}</div>
+        <div class="ticket-actions">
+          ${t.url ? `<a href="${t.url}" target="_blank">🔗 打开</a>` : ''}
+          <button onclick="removeTicket(${i})">删除</button>
+        </div>
+      </div>
+    `).join('')}
+    <div class="ticket-form">
+      <input id="tk-name" placeholder="名称（如 G2896 去程 / 西江酒店）">
+      <input id="tk-info" placeholder="备注（票号 / 订单号 / 时间）">
+      <input id="tk-url" placeholder="链接（12306 订单页 / 美团酒店）">
+      <button class="btn-save" onclick="addTicket()">+ 添加票据</button>
+    </div>
+  `;
+}
+function addTicket() {
+  const name = document.getElementById('tk-name').value.trim();
+  if (!name) return;
+  const t = {
+    name,
+    info: document.getElementById('tk-info').value.trim(),
+    url:  document.getElementById('tk-url').value.trim()
+  };
+  const list = getTickets(); list.push(t); saveTickets(list); renderTickets();
+}
+function removeTicket(i) {
+  const list = getTickets(); list.splice(i, 1); saveTickets(list); renderTickets();
+}
+
+/* === v2.3 #4 速查卡第 5 张 · 预算追踪 === */
+function renderBudgetCard(budget) {
+  if (!budget) return '';
+  const storageKey = `trip_${TRIP_ID}_budget`;
+  const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+  const days = TRIP.days.length;
+  const dailyTarget = Math.round(budget.total / days);
+
+  const dayInputs = TRIP.days.map((d, i) => {
+    const spent = saved[`day_${i}`] || '';
+    return `<div class="budget-day">
+      D${i+1}: ¥<input type="number" class="budget-input" data-day="${i}" value="${spent}"
+        oninput="updateBudget()" placeholder="0" />
+    </div>`;
+  }).join('');
+
+  return `<div class="quick-card budget-card">
+    <h3>💰 预算追踪</h3>
+    <div class="budget-summary">
+      总额 ¥${budget.total} &nbsp; 日均目标 ¥${dailyTarget}
+      &nbsp; 剩余 <span id="budget-remain" class="remain">¥${budget.total}</span>
+    </div>
+    <div class="budget-days">${dayInputs}</div>
+  </div>`;
+}
+
+function updateBudget() {
+  const storageKey = `trip_${TRIP_ID}_budget`;
+  const saved = {};
+  let totalSpent = 0;
+  document.querySelectorAll('.budget-input').forEach(input => {
+    const val = parseFloat(input.value) || 0;
+    saved[`day_${input.dataset.day}`] = val;
+    totalSpent += val;
+  });
+  localStorage.setItem(storageKey, JSON.stringify(saved));
+
+  const remain = (TRIP.meta.budget?.total || 0) - totalSpent;
+  const el = document.getElementById('budget-remain');
+  if (el) { el.textContent = `¥${remain}`; el.style.color = remain < 0 ? '#e74c3c' : '#27ae60'; }
+}
+
+function renderQuickCards() {
+  const container = document.getElementById('quick-cards');
+  if (!container) return;
+  const budget = TRIP?.meta?.budget;
+  if (budget) {
+    container.innerHTML = renderBudgetCard(budget);
+    // 恢复已存储的值并刷新剩余计算
+    updateBudget();
+  }
+}
+
+/* === 时间系统 A · 当下定位 === */
+function updateCurrentDay() {
+  const now = new Date();
+  const start = new Date(TRIP.meta.dates.start + 'T00:00:00');
+  const end = new Date(TRIP.meta.dates.end + 'T23:59:59');
+
+  if (now > end) {
+    document.getElementById('memory-banner').innerHTML =
+      '<div class="memory-banner">📸 回忆模式 · 旅行已结束</div>';
+    return;
+  }
+
+  if (now >= start && now <= end) {
+    const diff = Math.floor((now - start) / (1000*60*60*24));
+    const currentDayNum = diff + 1;
+    document.getElementById('current-day').textContent = currentDayNum;
+    document.querySelectorAll('.day-nav a').forEach(a => {
+      a.classList.toggle('active', +a.dataset.day === currentDayNum);
+    });
+    document.querySelectorAll('.day').forEach(s => {
+      const n = +s.id.replace('day-', '');
+      if (n < currentDayNum) s.classList.add('collapsed');
+    });
+    const st = document.getElementById(`status-${currentDayNum}`);
+    if (st) st.style.display = 'inline-block';
+    const target = document.getElementById(`day-${currentDayNum}`);
+    if (target) setTimeout(() => target.scrollIntoView({behavior:'smooth', block:'start'}), 300);
+  }
+}
+
+/* === 字号 === */
+let fontScale = 1;
+function adjFont(delta) {
+  fontScale = Math.max(0.8, Math.min(1.5, fontScale + delta * 0.1));
+  document.documentElement.style.setProperty('--font-scale', fontScale);
+}
+
+/* === 滚动检测当前 Day === */
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      const scrollY = window.scrollY + 180;
+      let current = 1;
+      TRIP.days.forEach(d => {
+        const el = document.getElementById(`day-${d.num}`);
+        if (el && el.offsetTop <= scrollY) current = d.num;
+      });
+      document.getElementById('current-day').textContent = current;
+      document.querySelectorAll('.day-nav a').forEach(a => {
+        a.classList.toggle('active', +a.dataset.day === current);
+      });
+      ticking = false;
+    });
+    ticking = true;
+  }
+});
+
+/* =====================================================
+   v2.3 #7 Edit Mode
+   ===================================================== */
+let editMode = false;
+const EDITS_KEY_FN = () => `trip_${TRIP_ID}_user_edits`;
+
+function loadEdits() {
+  return JSON.parse(localStorage.getItem(EDITS_KEY_FN()) || '{"edits":{},"card_annotations":{}}');
+}
+function saveEdits(data) {
+  localStorage.setItem(EDITS_KEY_FN(), JSON.stringify(data));
+}
+
+function toggleEditMode() {
+  editMode = !editMode;
+  document.body.classList.toggle('edit-mode', editMode);
+  document.getElementById('edit-toggle').textContent = editMode ? '✅' : '✏️';
+  document.getElementById('edit-toolbar').style.display = editMode ? 'flex' : 'none';
+  if (editMode) applyEditOverlay();
+}
+
+// 进入 Edit Mode 时应用已存改动的视觉
+function applyEditOverlay() {
+  const edits = loadEdits();
+  Object.entries(edits.edits).forEach(([id, v]) => {
+    const el = document.querySelector(`[data-id="${id}"]`);
+    if (!el) return;
+    el.className = el.className.replace(/status-\w+/g, '') + ` status-${v.status}`;
+    if (v.edited_spot) { const f = el.querySelector('[data-field="spot"]'); if (f) f.textContent = v.edited_spot; }
+    if (v.edited_note) { const f = el.querySelector('[data-field="note"]'); if (f) f.textContent = v.edited_note; }
+  });
+}
+
+// 点击可编辑字段时，进入内联编辑
+document.addEventListener('click', function(e) {
+  if (!editMode) return;
+  const field = e.target.closest('.edit-field');
+  if (!field) return;
+
+  const current = field.textContent;
+  const input = document.createElement(field.dataset.field === 'note' ? 'textarea' : 'input');
+  input.value = current;
+  input.className = 'edit-inline-input';
+  input.onblur = function() {
+    const itemId = field.dataset.id;
+    const fieldName = field.dataset.field;
+    const edits = loadEdits();
+    if (!edits.edits[itemId]) edits.edits[itemId] = { status: 'normal', timestamp: new Date().toISOString() };
+    edits.edits[itemId][`edited_${fieldName}`] = this.value;
+    edits.edits[itemId].status = 'changed';
+    edits.edits[itemId].timestamp = new Date().toISOString();
+    saveEdits(edits);
+    field.textContent = this.value;
+    field.style.display = '';
+    this.remove();
+    const item = field.closest('.timeline-item');
+    if (item) {
+      item.classList.add('status-changed');
+      item.classList.remove('status-normal');
+    }
+  };
+  field.style.display = 'none';
+  field.parentNode.insertBefore(input, field);
+  input.focus();
+});
+
+// 状态标记
+function setItemStatus(itemId, status) {
+  const edits = loadEdits();
+  if (!edits.edits[itemId]) edits.edits[itemId] = { timestamp: new Date().toISOString() };
+  edits.edits[itemId].status = status;
+  saveEdits(edits);
+
+  const el = document.querySelector(`[data-id="${itemId}"]`);
+  if (el) { el.className = el.className.replace(/status-\w+/g, `status-${status}`); }
+}
+
+// 导出改动摘要（复制到剪贴板）
+function exportEditSummary() {
+  const edits = loadEdits();
+  const tripId = TRIP_ID || 'trip';
+  let md = `# 行程改动摘要 · ${tripId} · 导出于 ${new Date().toLocaleString('zh-CN')}\n\n`;
+
+  const changed = Object.entries(edits.edits).filter(([, v]) => v.status !== 'normal');
+  if (changed.length > 0) {
+    md += `## 已改动项\n`;
+    changed.forEach(([id, v]) => {
+      const label = v.status === 'cancelled' ? '已取消' : `改为：${v.edited_spot || ''}`;
+      const reason = v.edited_note ? `（${v.edited_note}）` : '';
+      md += `- ${id} · ${label}${reason}\n`;
+    });
+  }
+
+  const annotations = Object.entries(edits.card_annotations || {});
+  if (annotations.length > 0) {
+    md += `\n## 卡片批注\n`;
+    annotations.forEach(([cid, note]) => md += `- ${cid}：${note}\n`);
+  }
+
+  md += `\n---\n请基于以上改动帮我更新行程安排。`;
+  navigator.clipboard.writeText(md).then(() => alert('改动摘要已复制到剪贴板！'));
+}
+
+/* === Init · 拉同目录 trip.json === */
+async function init() {
+  try {
+    const r = await fetch('trip.json');
+    if (!r.ok) throw new Error('trip.json HTTP ' + r.status);
+    TRIP = await r.json();
+    TRIP_ID = computeTripId(); // v2.2 #22 LocalStorage trip_id 前缀
+    ARCHETYPE = TRIP?.meta?.archetype || 'medium'; // v2.2 #24 archetype 行程档位
+  } catch (err) {
+    document.body.innerHTML = `<div style="padding:40px 20px;font-family:var(--font-serif);color:var(--luosi-red);text-align:center;">
+      <h2 style="font-family:var(--font-decorative);font-size:18px;margin-bottom:10px;">🍜 数据加载失败</h2>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;">无法读取同目录 <code>trip.json</code> · 请确认是用 HTTP 服务（不是双击 file://）打开<br>建议：<code>cd liuzhou-trip && python3 -m http.server 8000</code> 然后访问 http://localhost:8000/trip.html</p>
+      <p style="color:#888;font-size:11px;margin-top:14px;">${err.message}</p>
+    </div>`;
+    return;
+  }
+  renderStickyCtx();
+  renderDayNav();
+  renderDays();
+  renderQuickCards();
+  TRIP.days.forEach(d => renderDayMapThumb(d));
+  updateCurrentDay();
+}
+
+init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,826 @@
+/* ==========================================================================
+ * travel-itinerary skill · theme.template.css · v2.2
+ *
+ * 中性骨架皮肤 · 具体目的地由 frontend-design skill 在 Stage 3 覆盖此文件
+ * 不绑定任何目的地文化（不要在这里出现"螺蛳粉/京都/曼谷"等关键词）
+ *
+ * 设计基调：
+ *   - 米白纸感底（旅行手账感 · 不是 SaaS Dashboard）
+ *   - 墨绿主调 + 暖橙强调（中性温和 · 任何目的地皆可上层覆盖）
+ *   - 衬线字体优先（v2.1 §5.3 硬约束 · frontend-design 可追加但不可替换）
+ *
+ * 覆盖契约（frontend-design 在 Stage 3 应仅覆盖以下 CSS 变量）：
+ *   --bg / --bg-paper / --card           背景色板
+ *   --fg / --muted / --line              文字 + 分割线
+ *   --accent / --accent-dark             主调（卡片头/链接/按钮）
+ *   --hl / --hl-light                    强调点（招牌菜红底）
+ *   --warn-bg / --warn-border            提醒底色（黄底）
+ *   --paper-texture / --washi-divider    装饰 SVG（保持中性纸纹）
+ *   --font-decorative                    可追加目的地特色字体
+ *
+ * ⚠️ 不可改的：
+ *   --font-serif（衬线基调 · v2.1 §5.3）
+ *   7 模块布局（A/B/C/D/E/G）的 class 名 + 结构
+ *   .day .timeline .card-spot 的网格定义
+ * ========================================================================== */
+
+:root {
+  /* === 主背景色板 · 米白纸感（中性） === */
+  --bg:        #f5ede0;          /* 米白纸 · 略偏暖 */
+  --bg-paper:  #f1e6d3;          /* 翻页纸纹深色 */
+  --card:      #fdf7ec;          /* 卡片底 · 比 bg 略亮 */
+
+  /* === 文字色 === */
+  --fg:        #2c2218;          /* 墨黑 · 不是纯黑 */
+  --muted:     #7a6a52;          /* 米褐灰 · 中性补充 */
+  --line:      #d8c9a8;          /* 米线条 · 沙土感 */
+
+  /* === 主调 · 墨绿（D nav / 顶栏 / hotel / sight） === */
+  --accent:        #4a7556;      /* 墨绿 · 主色 */
+  --accent-dark:   #2c4a3d;      /* 深墨绿 · 强调 */
+  --accent-mist:   #b8c4be;      /* 淡雾灰绿 · 浅底 */
+
+  /* === 强调色 · 暖橙（食类 / 喷泉 / 红点） === */
+  --hl:            #c9362e;      /* 番茄烫红 · 链接/卡片头红字 */
+  --hl-dark:       #8a1d18;      /* 深红 · 深色版 */
+  --hl-light:      #d97a2c;      /* 暖橙 · 烟火小点 */
+
+  /* === 装饰高光 === */
+  --highlight-yellow: #d4a04f;   /* 灯火黄 · 装饰高光 */
+
+  /* === 警示/亮点底色 === */
+  --warn-bg:     #fff3d6;        /* 黄底亮点 */
+  --warn-border: #d4a04f;        /* 黄边 */
+  --dish-bg:     #fdebe6;        /* 红底招牌菜 */
+  --dish-border: #c9362e;
+
+  /* === 字体（v2.1 §5.3 硬约束 · 衬线优先） === */
+  --font-serif:      "Songti SC", "STSong", "Noto Serif SC", "Noto Serif JP",
+                     "SimSun", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+  --font-decorative: "STKaiti", "KaiTi", "Songti SC", serif;
+                     /* frontend-design 可追加目的地特色装饰字体 */
+  --font-sys:        -apple-system, BlinkMacSystemFont, "PingFang SC",
+                     "Hiragino Sans GB", sans-serif;
+  --font-mono:       ui-monospace, "SF Mono", Menlo, monospace;
+
+  --font-scale: 1;
+
+  /* === 通用纸纹背景 SVG（中性 · 不带任何目的地符号） === */
+  --paper-texture: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='2' /><feColorMatrix values='0 0 0 0 0.94  0 0 0 0 0.92  0 0 0 0 0.86  0 0 0 0.06 0'/></filter><rect width='160' height='160' filter='url(%23n)' /></svg>");
+
+  /* === 通用波纹分隔 SVG（中性 · frontend-design 可替换为目的地特色） === */
+  --washi-divider: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 28' preserveAspectRatio='none'><path d='M0,18 Q40,10 80,16 T160,18 Q200,8 240,14 T320,16 Q360,4 400,12 T480,14 Q520,8 540,12 L540,28 L0,28 Z' fill='%234a7556' opacity='0.18'/></svg>");
+}
+
+/* === 全局 reset + 字号大调 === */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; scroll-padding-top: 150px; }
+body {
+  font: calc(15px * var(--font-scale))/1.7 var(--font-serif);
+  color: var(--fg);
+  background: var(--bg) var(--paper-texture);
+  background-blend-mode: multiply;
+  background-attachment: fixed;
+  max-width: 540px; margin: 0 auto; padding-bottom: 100px;
+  min-height: 100vh;
+  letter-spacing: 0.3px;
+}
+
+/* === A. 顶栏 === */
+.top-bar {
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+  color: var(--bg);
+  padding: 16px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  border-bottom: 3px solid var(--highlight-yellow);
+  position: relative;
+  overflow: hidden;
+}
+.top-bar .dest {
+  font-family: var(--font-decorative);
+  font-size: 19px; font-weight: 600;
+  letter-spacing: 3px;
+}
+.top-bar .dates {
+  font-size: 11.5px; opacity: 0.88; margin-top: 4px;
+  letter-spacing: 0.8px;
+  font-family: var(--font-serif);
+}
+.top-bar .day-chip {
+  background: rgba(245, 237, 224, 0.22);
+  border: 1px solid rgba(245, 237, 224, 0.35);
+  padding: 7px 12px;
+  border-radius: 14px; font-size: 12px; white-space: nowrap;
+  letter-spacing: 1px;
+  font-family: var(--font-mono);
+}
+.top-bar .day-chip strong { font-size: 14px; }
+
+/* === C. 上下文贴条（非 sticky · v2.1 §11.11） === */
+.sticky-ctx {
+  background: rgba(245, 237, 224, 0.95);
+  border-bottom: 1px dashed var(--line);
+  padding: 7px 14px; display: flex; gap: 14px;
+  overflow-x: auto; white-space: nowrap;
+  font-size: 11px; color: var(--muted);
+  font-family: var(--font-serif);
+}
+.sticky-ctx::-webkit-scrollbar { display: none; }
+.sticky-ctx span { flex-shrink: 0; letter-spacing: 0.5px; }
+.sticky-ctx span strong { color: var(--hl); font-weight: 600; }
+
+/* === B. 速查按钮 4 个 · v2.1 §5.4 === */
+.quick-bar {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 9px; padding: 12px 14px 10px;
+}
+.quick-btn {
+  padding: 11px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  text-align: center; font-size: 11.5px; cursor: pointer;
+  color: var(--accent-dark);
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.quick-btn .ico { font-size: 22px; display: block; margin-bottom: 3px; }
+.quick-btn:active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent-dark);
+}
+
+/* === D. 日程导航 sticky · v2.1 §11.11 === */
+.day-nav {
+  position: sticky; top: 0; z-index: 95;
+  background: rgba(245, 237, 224, 0.97);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  padding: 9px 11px; display: flex; gap: 5px;
+  overflow-x: auto;
+}
+.day-nav::-webkit-scrollbar { display: none; }
+.day-nav a {
+  flex-shrink: 0; text-decoration: none;
+  color: var(--muted);
+  padding: 8px 11px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 11.5px; text-align: center; min-width: 56px;
+  letter-spacing: 0.6px;
+  font-family: var(--font-serif);
+}
+.day-nav a.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent-dark);
+  box-shadow: 0 2px 6px rgba(74, 117, 86, 0.35);
+}
+.day-nav a strong {
+  display: block; font-size: 13.5px; font-weight: 700;
+  font-family: var(--font-decorative);
+  letter-spacing: 1.5px;
+}
+.day-nav a small {
+  display: block; font-size: 9.5px; opacity: 0.85;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+
+/* === E. 每日 section · v2.1 §11.11 scroll-margin-top === */
+.day {
+  margin: 18px 12px 24px;
+  scroll-margin-top: 70px;
+  position: relative;
+}
+.day.collapsed .day-body { display: none; }
+.day-header {
+  padding: 14px 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: var(--bg);
+  border-radius: 10px 10px 0 0;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.day-header::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 14px;
+  background: var(--washi-divider) center bottom/cover no-repeat;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.day-header .num {
+  font-size: 10.5px; opacity: 0.88; letter-spacing: 2.5px;
+  font-family: var(--font-mono);
+}
+.day-header .date {
+  font-size: 16px; font-weight: 700; margin-top: 3px;
+  letter-spacing: 1.5px;
+  font-family: var(--font-decorative);
+}
+.day-header .theme {
+  font-size: 12px; opacity: 0.92; margin-top: 4px;
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+.day-header .status {
+  display: inline-block; margin-left: 8px; padding: 2px 9px;
+  background: var(--highlight-yellow); color: var(--accent-dark);
+  border-radius: 10px;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.5px;
+  font-family: var(--font-serif);
+}
+.day-body {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  padding: 0;
+  box-shadow: 0 1px 8px rgba(44, 74, 61, 0.06);
+}
+
+/* === E.0 每日地图 · 紧凑 160px · v2.1 §5.5 === */
+.day-map {
+  height: 160px; position: relative;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  background: var(--accent-mist);
+}
+.day-map .map-hint {
+  position: absolute; top: 9px; right: 9px; z-index: 500;
+  background: rgba(253, 247, 236, 0.97);
+  padding: 5px 11px;
+  border-radius: 14px;
+  font-size: 11px;
+  color: var(--accent-dark);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-family: var(--font-serif);
+  letter-spacing: 0.5px;
+}
+
+/* === E.1 时间轴 === */
+.timeline { padding: 8px 0; }
+.tl-item {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 10px;
+  padding: 9px 14px;
+}
+.tl-item + .tl-item {
+  border-top: 1px dashed var(--line);
+}
+.tl-time {
+  font-size: 11.5px;
+  color: var(--hl);
+  font-weight: 600;
+  padding-top: 3px;
+  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+}
+/* v2.1 §5.8 当下定位 · 当前时段 sticky 红点 */
+.tl-item.now .tl-time {
+  background: var(--hl);
+  color: var(--card);
+  padding: 3px 5px;
+  border-radius: 4px;
+  text-align: center;
+}
+.tl-body { min-width: 0; }
+.tl-note {
+  font-size: 12.5px;
+  color: var(--fg);
+  padding: 4px 0;
+  line-height: 1.65;
+  font-family: var(--font-serif);
+}
+.tl-note.transit::before { content: '→ '; color: var(--accent); }
+.tl-note.free::before    { content: '⏸ '; color: var(--muted); }
+.tl-note.meal::before    { content: '🍴 '; }
+
+/* v2.1 §11.11 时间轴 · 下一段交通小字 */
+.tl-transit {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 5px;
+  padding-left: 4px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  letter-spacing: 0.3px;
+}
+
+/* === 卡片 v2.1 §11.10 + v2.2 #23 视觉减负 === */
+.card-spot {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
+  margin: 3px 0;
+  position: relative;
+}
+/* v2.1 §11.10 删 110px 占位色块 · 默认 hidden · 仅有真图时显示 */
+.card-img { display: none; }
+.card-img.has-real {
+  display: block; width: 100%;
+  border-radius: 6px; margin-bottom: 8px; overflow: hidden;
+}
+.card-img.has-real img {
+  width: 100%; height: auto; max-height: 180px;
+  object-fit: cover; display: block;
+}
+
+.card-header {
+  display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 5px; margin-bottom: 5px;
+}
+.card-name {
+  font-size: 15px; font-weight: 700;
+  font-family: var(--font-decorative);
+  color: var(--fg);
+  letter-spacing: 0.5px;
+}
+.card-tag {
+  font-size: 10.5px; color: var(--muted); font-weight: normal;
+  font-family: var(--font-serif);
+  letter-spacing: 0.3px;
+}
+/* v2.2 #6 营业时段 · 红字警告 hours 字段 */
+.card-hours-warn {
+  font-size: 10.5px;
+  color: var(--hl);
+  font-weight: 600;
+  margin-left: auto;
+  letter-spacing: 0.3px;
+}
+
+/* 亮点 · 黄底 · v2.2 #23: 美食卡默认隐藏，进展开详情 */
+.card-hl {
+  font-size: 12.5px;
+  color: #5a4820;
+  margin: 5px 0;
+  padding: 6px 10px;
+  background: var(--warn-bg);
+  border-left: 3px solid var(--highlight-yellow);
+  border-radius: 3px;
+  line-height: 1.6;
+  font-family: var(--font-serif);
+}
+/* v2.2 #23: type=food 时默认隐藏紧凑视图的黄底 highlight */
+.card-spot.is-food > .card-hl { display: none; }
+/* 在展开介绍内的 highlight（开篇句）始终显示 */
+.card-intro .card-hl { display: block; margin-bottom: 9px; }
+
+/* 招牌菜 · 红底 · v2.1 §11.10 保留为食类卡核心 */
+.card-dishes {
+  font-size: 12.5px;
+  color: var(--hl-dark);
+  margin: 5px 0;
+  padding: 6px 10px;
+  background: var(--dish-bg);
+  border-left: 3px solid var(--dish-border);
+  border-radius: 3px;
+  line-height: 1.65;
+  font-family: var(--font-serif);
+}
+.card-dishes strong {
+  color: var(--hl);
+  margin-right: 5px;
+  font-weight: 600;
+}
+
+/* 关键信息一行 */
+.card-info {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin: 6px 0;
+  font-family: var(--font-serif);
+  letter-spacing: 0.3px;
+}
+.card-info span { margin-right: 11px; }
+.card-info span strong {
+  color: var(--accent);
+  font-weight: normal;
+  margin-right: 3px;
+}
+
+/* 链接行 · v2.1 §11.10 一行细链接 */
+.card-links {
+  font-size: 11.5px;
+  margin: 7px 0 4px;
+  font-family: var(--font-serif);
+}
+.card-links a {
+  color: var(--hl);
+  text-decoration: none;
+  margin-right: 13px;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+.card-links a:hover {
+  color: var(--hl-dark);
+  text-decoration: underline;
+}
+
+/* 展开按钮 */
+.card-expand-btn {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 11px;
+  background: var(--bg);
+  color: var(--accent);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+  font-family: var(--font-serif);
+  letter-spacing: 0.5px;
+  transition: all 0.15s;
+}
+.card-expand-btn:hover {
+  background: var(--accent);
+  color: var(--card);
+}
+
+/* 长介绍 · 折叠 */
+.card-intro {
+  display: none;
+  margin-top: 9px;
+  padding: 10px 12px;
+  background: #faf3e3;
+  border-radius: 6px;
+  border-left: 3px solid var(--accent);
+  position: relative;
+}
+.card-intro.open { display: block; }
+.card-intro p {
+  font-size: 12.5px;
+  line-height: 1.85;
+  margin-bottom: 8px;
+  color: #4a3a26;
+  font-family: var(--font-serif);
+  text-indent: 2em;
+}
+.card-intro p:last-child { margin-bottom: 0; }
+
+/* timeline 备注 */
+.card-note {
+  font-size: 11.5px;
+  color: var(--hl);
+  margin-top: 7px;
+  font-style: italic;
+  font-family: var(--font-serif);
+  letter-spacing: 0.3px;
+}
+
+/* === E.2 备用方案 === */
+.day-backup {
+  margin: 7px 14px 11px;
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.day-backup summary {
+  padding: 11px 13px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: #5c4008;
+  list-style: none;
+  font-family: var(--font-serif);
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+.day-backup summary::before { content: '🔄 '; }
+.day-backup .bk-content {
+  padding: 0 13px 11px;
+  font-size: 12.5px;
+  color: #5c4008;
+  line-height: 1.75;
+  font-family: var(--font-serif);
+}
+.day-backup .bk-content p { margin: 5px 0; }
+.day-backup .bk-content b { color: #5c4008; font-weight: 600; }
+
+/* === E.3 备选专栏 平铺 · v2.1 §11.11 === */
+.day-alt {
+  margin: 7px 14px 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  padding: 11px 13px;
+}
+.day-alt .alt-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-dark);
+  margin-bottom: 9px;
+  letter-spacing: 0.5px;
+  font-family: var(--font-decorative);
+}
+.day-alt .alt-title::before { content: '📚 '; }
+.alt-item {
+  padding: 9px 4px;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12px;
+  font-family: var(--font-serif);
+}
+.alt-item:last-child { border-bottom: none; }
+.alt-item .name {
+  font-weight: 600;
+  font-size: 13px;
+  font-family: var(--font-decorative);
+  letter-spacing: 0.5px;
+}
+.alt-item.nearby .name::before { content: '🟢 '; font-size: 11px; }
+.alt-item.far .name::before    { content: '⚪ '; font-size: 11px; }
+.alt-item.far { opacity: 0.65; }
+.alt-item .desc {
+  color: var(--muted);
+  margin: 4px 0;
+  line-height: 1.55;
+  font-size: 11.5px;
+}
+.alt-item .dist {
+  font-size: 10.5px;
+  color: var(--accent);
+  font-family: var(--font-serif);
+  letter-spacing: 0.3px;
+}
+.alt-item .link {
+  font-size: 10.5px;
+  margin-left: 9px;
+  color: var(--hl);
+  text-decoration: none;
+  letter-spacing: 0.3px;
+}
+.alt-item .link:hover { color: var(--hl-dark); }
+
+/* === Modal === */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(44, 34, 24, 0.78);
+  z-index: 999;
+  overflow-y: auto;
+  padding: 16px;
+}
+.modal.show { display: block; }
+.modal-content {
+  background: var(--card) var(--paper-texture);
+  background-blend-mode: multiply;
+  border-radius: 12px;
+  max-width: 500px;
+  margin: 0 auto;
+  overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line);
+}
+.modal-header {
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+  color: var(--bg);
+  padding: 13px 17px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h2 {
+  font-size: 14.5px;
+  letter-spacing: 1.5px;
+  font-family: var(--font-decorative);
+}
+.modal-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  background: rgba(245, 237, 224, 0.22);
+  color: var(--bg);
+  border: 1px solid rgba(245, 237, 224, 0.4);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-body { padding: 16px 18px; }
+.modal-body h4 {
+  font-size: 13px;
+  color: var(--hl);
+  margin: 15px 0 7px;
+  padding-bottom: 5px;
+  border-bottom: 1px dashed var(--line);
+  font-family: var(--font-decorative);
+  letter-spacing: 1px;
+}
+.modal-body h4:first-child { margin-top: 0; }
+.modal-body ul { list-style: none; padding: 0; }
+.modal-body li {
+  padding: 5px 0;
+  font-size: 12.5px;
+  font-family: var(--font-serif);
+}
+.modal-body li b { color: var(--fg); margin-right: 6px; font-weight: 600; }
+.modal-body li a { color: var(--hl); text-decoration: none; }
+.prep-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 0;
+  font-size: 12.5px;
+  font-family: var(--font-serif);
+  color: var(--fg);
+}
+.prep-item input { margin: 0; }
+
+/* Modal 大地图 */
+.modal-big-map { height: 280px; }
+.modal-route-btn {
+  display: block;
+  background: var(--accent);
+  color: var(--bg);
+  text-align: center;
+  padding: 11px;
+  text-decoration: none;
+  font-size: 12.5px;
+  margin: 11px 14px;
+  border-radius: 6px;
+  letter-spacing: 0.8px;
+  font-family: var(--font-serif);
+  font-weight: 500;
+}
+.modal-route-list { padding: 0 17px 14px; }
+.modal-route-item {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 9px;
+  padding: 5px 0;
+}
+.modal-route-item .t {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.modal-route-item .s {
+  font-size: 12.5px;
+  font-family: var(--font-serif);
+  line-height: 1.55;
+}
+
+/* === 票据 === */
+.ticket {
+  padding: 11px 13px;
+  margin: 7px 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  font-size: 12.5px;
+  font-family: var(--font-serif);
+}
+.ticket .title {
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--hl);
+  font-family: var(--font-decorative);
+  letter-spacing: 0.5px;
+}
+.ticket .meta { color: var(--muted); font-size: 11.5px; }
+.ticket-actions { display: flex; gap: 7px; margin-top: 7px; }
+.ticket-actions a, .ticket-actions button {
+  padding: 5px 9px;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--hl);
+  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-serif);
+  letter-spacing: 0.3px;
+}
+.ticket-form {
+  padding: 11px;
+  background: var(--bg);
+  border-radius: 7px;
+  margin-top: 11px;
+}
+.ticket-form input, .ticket-form textarea {
+  width: 100%;
+  padding: 7px 9px;
+  margin: 4px 0;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12.5px;
+  font-family: var(--font-serif);
+  background: #fff;
+}
+.ticket-form .btn-save {
+  padding: 7px 16px;
+  background: var(--hl);
+  color: var(--card);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-family: var(--font-serif);
+  letter-spacing: 0.5px;
+}
+
+/* === G. 底部工具条 · v2.1 §11.11 移动端隐藏打印 === */
+.floater {
+  position: fixed;
+  bottom: 14px;
+  right: 50%;
+  transform: translateX(270px);
+  display: flex;
+  gap: 6px;
+  z-index: 100;
+}
+@media (max-width: 560px) {
+  .floater { right: 12px; transform: none; }
+  .floater .print-btn { display: none; }
+}
+.floater button {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 19px;
+  border: 1px solid var(--accent-dark);
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(44, 74, 61, 0.4);
+  font-family: var(--font-serif);
+  letter-spacing: 0.5px;
+}
+.floater button:active { background: var(--accent-dark); }
+
+/* === 点标 === */
+.pin-num {
+  background: var(--hl);
+  color: #fff;
+  width: 24px; height: 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  font-weight: 600;
+}
+.pin-dot {
+  width: 11px; height: 11px;
+  background: var(--hl);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.leaflet-div-icon { background: transparent; border: none; }
+
+/* === 回忆模式 · v2.1 §5.8 === */
+.memory-banner {
+  background: var(--highlight-yellow);
+  color: var(--accent-dark);
+  text-align: center;
+  padding: 9px;
+  font-size: 12.5px;
+  letter-spacing: 1.5px;
+  font-family: var(--font-decorative);
+  border-bottom: 2px solid var(--accent);
+}
+
+/* === Print === */
+@media print {
+  .floater, .day-nav, .sticky-ctx, .quick-bar { display: none; }
+  body { max-width: none; background: #fff; }
+  .day { page-break-inside: avoid; }
+}
+
+/* === 小屏适配（≤375px） === */
+@media (max-width: 375px) {
+  body { font-size: calc(13.5px * var(--font-scale)); }
+  .top-bar .dest { font-size: 16px; letter-spacing: 2px; }
+  .day-header .date { font-size: 14.5px; }
+  .card-name { font-size: 14px; }
+  .quick-bar { gap: 6px; padding: 10px 10px 8px; }
+  .quick-btn { font-size: 10.5px; }
+  .quick-btn .ico { font-size: 19px; }
+}
