@@ -343,7 +343,8 @@ body{display:flex;flex-direction:column}
 
 /* ── 出行须知（贯穿约束 · 全 scope）· 附录顶部满宽横幅 ── */
 /* 限高铁律：纳入 region/day 级约束后条数可能变多，整区 max-height 封顶 + 组内 max-height，
-   多出的约束在固定画布内被裁掉而非撑破附录页（约束 10 条时实测不溢出）。*/
+   多出的约束在固定画布内不撑破附录页。单 type 超 MAX_SHOWN(4) 条时由 renderConstraintsBanner
+   封顶显示前 3 条 + 可见「＋ 另有 N 条」指示行（绝不静默裁掉，病灶④遗留已修）。*/
 .apx-warn{flex-shrink:0;background:var(--bg2);border-top:3px solid var(--accent);padding:22px 48px 24px;overflow:hidden;max-height:300px}
 .apx-warn-hd{display:flex;align-items:baseline;gap:11px;margin-bottom:16px;overflow:hidden}
 .apx-warn-hd b{font:600 11px var(--mono);letter-spacing:.28em;color:var(--accent);text-transform:uppercase;white-space:nowrap}
@@ -353,6 +354,7 @@ body{display:flex;flex-direction:column}
 .apx-warn-grp .gt{display:flex;align-items:center;gap:7px;font:700 12.5px var(--sans);color:var(--ink);margin-bottom:7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .apx-warn-grp .gt .ic{font-size:15px;flex-shrink:0}
 .apx-warn-item{font:400 13.5px/1.5 var(--sans);color:var(--ink2);padding:3px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.apx-warn-grp .apx-warn-more{font:600 11.5px var(--sans);color:var(--accent);padding:5px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── 图文内容页（特产 / 备选美食 / 备选景点）· 均衡行 ── */
 .gx-body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;padding:30px 48px;overflow:hidden}
@@ -1065,10 +1067,15 @@ function renderConstraintsBanner(){
     const t=CSTR_TYPE[c.type]?c.type:'other';
     (groups[t]=groups[t]||[]).push(cstrScopePrefix(c.scope)+(c.text||''));
   });
+  const MAX_SHOWN=4;                                          // 固定页限高：单组超此数会被裁。封顶 + 可见计数，绝不静默丢
   const cells=CSTR_ORDER.filter(t=>groups[t]).map(t=>{
-    const m=CSTR_TYPE[t];
+    const m=CSTR_TYPE[t], items=groups[t];
+    const over=items.length>MAX_SHOWN;
+    const shown=over?items.slice(0,MAX_SHOWN-1):items;        // 超限时只显前 3 条，留出指示行的位置
+    const moreN=over?items.length-(MAX_SHOWN-1):0;
     return `<div class="apx-warn-grp"><div class="gt"><span class="ic">${m.ic}</span>${esc(m.label)}</div>${
-      groups[t].map(tx=>`<div class="apx-warn-item">${esc(tx)}</div>`).join('')}</div>`;
+      shown.map(tx=>`<div class="apx-warn-item">${esc(tx)}</div>`).join('')}${
+      moreN?`<div class="apx-warn-more">＋ 另有 ${moreN} 条同类提醒（版面所限未全列，出行前细读）</div>`:''}</div>`;
   }).join('');
   return `<div class="apx-warn">
     <div class="apx-warn-hd"><b>⚠ 出行须知</b><em>Trip-wide Notes · 全程把关</em></div>
