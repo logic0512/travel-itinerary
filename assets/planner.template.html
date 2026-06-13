@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>行程规划 — {{目的地}}</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- SortableJS for drag-and-drop -->
+<script src="https://unpkg.com/sortablejs@1.15.2/Sortable.min.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #FFFFFF;
+  --text: #1A1A1A;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --blue: #2563EB;
+  --blue-light: #EFF6FF;
+  --blue-border: #BFDBFE;
+  --green: #16A34A;
+  --green-light: #F0FDF4;
+  --green-border: #BBF7D0;
+  --red: #C0392B;
+  --border: #E5E7EB;
+  --border-light: #F3F4F6;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Noto Sans SC', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* ─── Header ─── */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 1000;
+}
+
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.header-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-badge {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--border-light);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+#export-btn {
+  display: none;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#export-btn:hover { background: #1d4ed8; }
+
+/* ─── Day Tabs ─── */
+#tabs {
+  position: fixed;
+  top: 60px; left: 0; right: 0;
+  height: 48px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: stretch;
+  padding: 0 20px;
+  gap: 0;
+  z-index: 999;
+  overflow-x: auto;
+}
+#tabs::-webkit-scrollbar { display: none; }
+
+.day-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: 'Noto Sans SC', sans-serif;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  position: relative;
+}
+.day-tab:hover { color: var(--text); }
+.day-tab.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+  font-weight: 600;
+}
+.day-tab.locked {
+  color: var(--green);
+}
+.day-tab.locked .tab-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px; height: 16px;
+  background: var(--green);
+  border-radius: 50%;
+  font-size: 9px;
+  color: white;
+}
+.tab-check { display: none; }
+
+/* ─── Main Layout ─── */
+#main {
+  position: fixed;
+  top: 108px;
+  left: 0; right: 0;
+  bottom: 64px;
+  display: flex;
+}
+
+/* ─── Map ─── */
+#map {
+  width: 60%;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+/* ─── Popup override ─── */
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+}
+.leaflet-popup-tip { background: white; }
+
+/* ─── Right Panel ─── */
+#panel {
+  width: 40%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* Filter bar */
+#filter-bar {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.filter-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+#region-filter {
+  font-size: 12px;
+  font-family: 'Noto Sans SC', sans-serif;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  color: var(--text);
+  background: var(--bg);
+  cursor: pointer;
+  outline: none;
+}
+#region-filter:focus { border-color: var(--blue); }
+
+/* Panel scroll area */
+#panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0 8px;
+}
+#panel-scroll::-webkit-scrollbar { width: 4px; }
+#panel-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Section headers */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.section-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--border-light);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+/* Confirmed place items */
+.place-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 16px;
+  transition: background 0.1s;
+  cursor: default;
+}
+.place-item:hover { background: var(--border-light); }
+.place-item.locked { opacity: 0.6; pointer-events: none; }
+
+.drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding-top: 4px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.drag-handle:active { cursor: grabbing; }
+
+.place-num {
+  width: 24px; height: 24px;
+  background: var(--red);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.place-info {
+  flex: 1;
+  min-width: 0;
+}
+.place-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.place-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.place-type {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.place-region-tag {
+  font-size: 10px;
+  background: var(--border-light);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.place-remove {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+.place-item:hover .place-remove { opacity: 1; }
+.place-remove:hover { color: var(--red); }
+
+/* Transport connector */
+.transport-connector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 16px 2px 44px;
+}
+.transport-line {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin-left: 11px;
+}
+.transport-info {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--border-light);
+  padding: 1px 8px;
+  border-radius: 3px;
+  display: flex;
+  gap: 8px;
+}
+.transport-info span { color: var(--text-secondary); }
+
+/* Transit bar (distance + time between two stops) */
+.transit-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 16px 5px 52px;
+  background: var(--border-light);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.transit-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.transit-mode {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.transit-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+.transit-sep {
+  color: var(--border);
+  font-size: 12px;
+}
+.transit-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Divider */
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+
+/* Candidate items */
+.candidate-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  transition: background 0.1s;
+}
+.candidate-item:hover { background: var(--blue-light); }
+.candidate-item[style*="display:none"] { display: none !important; }
+
+.candidate-dot {
+  width: 24px; height: 24px;
+  border: 2px dashed var(--text-muted);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.candidate-info { flex: 1; min-width: 0; }
+.candidate-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.candidate-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.candidate-type {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.candidate-region {
+  font-size: 10px;
+  background: var(--border-light);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.add-btn {
+  background: none;
+  border: 1px solid var(--blue-border);
+  color: var(--blue);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+.add-btn:hover { background: var(--blue-light); }
+
+/* Empty state */
+.empty-state {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ─── Bottom Bar ─── */
+#bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 64px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 1000;
+}
+
+.day-stats {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 16px;
+}
+.day-stats .stat-val { color: var(--text); font-weight: 500; }
+
+#lock-btn {
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#lock-btn:hover { background: #15803d; transform: translateY(-1px); }
+#lock-btn:active { transform: translateY(0); }
+#lock-btn:disabled {
+  background: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ─── Map Popup ─── */
+.popup-card {
+  font-family: 'Noto Sans SC', sans-serif;
+  min-width: 180px;
+}
+.popup-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.popup-type {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.popup-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.popup-actions {
+  display: flex;
+  gap: 6px;
+}
+.popup-remove-btn, .popup-add-btn {
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+}
+.popup-remove-btn {
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+}
+.popup-remove-btn:hover { background: #FEE2E2; }
+.popup-add-btn {
+  background: var(--blue-light);
+  color: var(--blue);
+  border: 1px solid var(--blue-border);
+}
+.popup-add-btn:hover { background: #DBEAFE; }
+
+/* ─── Toast ─── */
+#toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1A1A1A;
+  color: white;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ─── Accommodation Section ─── */
+#accommodation {
+  display: none;
+  padding: 0 20px 40px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+#accommodation-trigger {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  display: none;
+  z-index: 500;
+}
+.accom-heading {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+.accom-form {
+  background: var(--border-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.form-row {
+  margin-bottom: 16px;
+}
+.form-row:last-child { margin-bottom: 0; }
+.form-row-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--bg);
+  color: var(--text);
+}
+.chip:hover { border-color: var(--blue); color: var(--blue); }
+.chip.selected {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: white;
+}
+.accom-submit-btn {
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: background 0.15s;
+}
+.accom-submit-btn:hover { background: #1d4ed8; }
+
+#accom-results { display: none; }
+.region-rec {
+  background: var(--border-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.region-rec-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.region-rec-reason {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.region-pros-cons {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.pros { color: var(--green); }
+.cons { color: #EF4444; }
+
+.hotel-list { display: flex; flex-direction: column; gap: 8px; }
+.hotel-item {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hotel-stars { color: #F59E0B; font-size: 12px; }
+.hotel-info { flex: 1; }
+.hotel-name { font-size: 13px; font-weight: 600; }
+.hotel-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  margin-top: 2px;
+}
+.hotel-price {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.reminder-box {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 20px;
+}
+.reminder-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #92400E;
+  margin-bottom: 8px;
+}
+.reminder-item {
+  font-size: 12px;
+  color: #78350F;
+  padding: 4px 0;
+  padding-left: 16px;
+  position: relative;
+}
+.reminder-item::before {
+  content: '⏰';
+  position: absolute;
+  left: 0;
+  font-size: 11px;
+}
+
+/* Modal overlay for accommodation */
+#accom-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+#accom-modal.open { display: flex; }
+.accom-modal-inner {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-close {
+  float: right;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+/* ─── Transitions ─── */
+.place-item, .candidate-item {
+  transition: background 0.1s, opacity 0.2s;
+}
+
+#panel-scroll .section-header + ul {
+  min-height: 40px;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div class="header-left">
+    <span class="header-title">行程规划</span>
+    <span class="header-subtitle" id="header-subtitle">东京 · 3天</span>
+  </div>
+  <div class="header-right">
+    <span class="progress-badge" id="progress-badge">已锁定 0 / 3 天</span>
+    <button id="export-btn" onclick="exportItinerary()">导出行程结构</button>
+  </div>
+</div>
+
+<!-- Day Tabs -->
+<div id="tabs"></div>
+
+<!-- Main -->
+<div id="main">
+  <div id="map"></div>
+  <div id="panel">
+    <div id="filter-bar">
+      <span class="filter-label">片区筛选</span>
+      <select id="region-filter" onchange="filterCandidates()">
+        <option value="all">全部片区</option>
+        <option value="浅草">浅草</option>
+        <option value="新宿">新宿</option>
+        <option value="涩谷">涩谷</option>
+        <option value="上野">上野</option>
+        <option value="银座">银座</option>
+      </select>
+    </div>
+    <div id="panel-scroll">
+      <!-- Confirmed places -->
+      <div class="section-header">
+        <span class="section-title">今天的行程</span>
+        <span class="section-count" id="confirmed-count">0 个地点</span>
+      </div>
+      <ul id="confirmed-list" style="list-style:none;padding:0;"></ul>
+
+      <div class="section-divider"></div>
+
+      <!-- Candidates -->
+      <div class="section-header">
+        <span class="section-title">可加入的候选点</span>
+        <span class="section-count" id="candidate-count">0 个</span>
+      </div>
+      <ul id="candidate-list" style="list-style:none;padding:0;"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Bar -->
+<div id="bottom-bar">
+  <div class="day-stats" id="day-stats">
+    <span>共 <span class="stat-val" id="stat-places">0</span> 个地点</span>
+    <span>总路程约 <span class="stat-val" id="stat-dist">0</span> km</span>
+    <span>预计移动 <span class="stat-val" id="stat-time">0</span> 分钟</span>
+  </div>
+  <button id="lock-btn" onclick="lockDay()">锁定今天的行程 →</button>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Accommodation Modal -->
+<div id="accom-modal">
+  <div class="accom-modal-inner">
+    <button class="modal-close" onclick="closeAccomModal()">×</button>
+    <h2 class="accom-heading" style="margin-top:0">根据你的行程，推荐住宿区域</h2>
+    <div id="accom-form-wrap">
+      <div class="accom-form">
+        <div class="form-row">
+          <div class="form-row-label">预算（每晚）</div>
+          <div class="chip-group" data-group="budget">
+            <div class="chip" data-val="economy" onclick="selectChip(this)">经济（&lt;300/晚）</div>
+            <div class="chip" data-val="comfort" onclick="selectChip(this)">舒适（300–800）</div>
+            <div class="chip selected" data-val="premium" onclick="selectChip(this)">高端（800+）</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-row-label">风格偏好</div>
+          <div class="chip-group" data-group="style">
+            <div class="chip" data-val="business" onclick="selectChip(this)">商务连锁</div>
+            <div class="chip selected" data-val="design" onclick="selectChip(this)">设计酒店</div>
+            <div class="chip" data-val="bnb" onclick="selectChip(this)">民宿/公寓</div>
+            <div class="chip" data-val="any" onclick="selectChip(this)">不限</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-row-label">住宿方式</div>
+          <div class="chip-group" data-group="stay">
+            <div class="chip selected" data-val="one" onclick="selectChip(this)">一处住全程</div>
+            <div class="chip" data-val="multi" onclick="selectChip(this)">按片区分住多处</div>
+          </div>
+        </div>
+        <button class="accom-submit-btn" onclick="showAccomResults()">查看推荐住宿 →</button>
+      </div>
+    </div>
+    <div id="accom-results">
+      <div class="region-rec">
+        <div class="region-rec-name">浅草/上野 区域</div>
+        <div class="region-rec-reason">你的行程集中在浅草、上野一带，住在这里步行即可覆盖70%地点</div>
+        <div class="region-pros-cons">
+          <span class="pros">✓ 传统氛围浓厚，地铁换乘方便</span>
+          <span class="cons">✗ 距新宿需25分钟</span>
+        </div>
+        <div class="hotel-list">
+          <div class="hotel-item">
+            <div class="hotel-stars">★★★★★</div>
+            <div class="hotel-info">
+              <div class="hotel-name">示例精品酒店 A</div>
+              <div class="hotel-meta">步行至浅草寺 5分钟</div>
+            </div>
+            <div class="hotel-price">¥1,200–1,800/晚</div>
+          </div>
+          <div class="hotel-item">
+            <div class="hotel-stars">★★★★</div>
+            <div class="hotel-info">
+              <div class="hotel-name">示例商务酒店 B</div>
+              <div class="hotel-meta">步行至上野公园 8分钟</div>
+            </div>
+            <div class="hotel-price">¥600–900/晚</div>
+          </div>
+          <div class="hotel-item">
+            <div class="hotel-stars">★★★★</div>
+            <div class="hotel-info">
+              <div class="hotel-name">示例设计酒店 C</div>
+              <div class="hotel-meta">步行至浅草站 3分钟</div>
+            </div>
+            <div class="hotel-price">¥800–1,200/晚</div>
+          </div>
+          <div class="hotel-item">
+            <div class="hotel-stars">★★★</div>
+            <div class="hotel-info">
+              <div class="hotel-name">示例民宿 D</div>
+              <div class="hotel-meta">步行至上野站 6分钟</div>
+            </div>
+            <div class="hotel-price">¥350–500/晚</div>
+          </div>
+          <div class="hotel-item">
+            <div class="hotel-stars">★★★</div>
+            <div class="hotel-info">
+              <div class="hotel-name">示例胶囊酒店 E</div>
+              <div class="hotel-meta">步行至浅草寺 10分钟</div>
+            </div>
+            <div class="hotel-price">¥180–280/晚</div>
+          </div>
+        </div>
+      </div>
+      <div class="reminder-box">
+        <div class="reminder-title">需要提前预约的项目</div>
+        <div class="reminder-item">浅草寺观光（人流高峰建议早8点前抵达）</div>
+        <div class="reminder-item">筑地外市场海鲜套餐（推荐提前1天预约）</div>
+        <div class="reminder-item">上野动物园门票（节假日建议提前在线购票）</div>
+        <div class="reminder-item">热门寿司餐厅（通常需提前2周预约）</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Data ───────────────────────────────────────────────────────────────────
+
+const CONFIG = {
+  destination: '东京',
+  totalDays: 3,
+  startDate: '2026-09-01',
+  is_domestic: false  // true = 国内（默认开车）, false = 国际（默认公共交通）
+};
+
+// All places pool
+const PLACES = {
+  'p1': { id:'p1', name:'浅草寺', type:'sight', typeLabel:'寺庙景点', region:'浅草', coords:[35.7148, 139.7967], desc:'东京最古老的寺庙，雷门大灯笼是标志性打卡点' },
+  'p2': { id:'p2', name:'仲见世商店街', type:'shopping', typeLabel:'购物街', region:'浅草', coords:[35.7134, 139.7963], desc:'通向浅草寺的步行街，小吃和手工艺品云集' },
+  'p3': { id:'p3', name:'晴空塔', type:'sight', typeLabel:'观景台', region:'浅草', coords:[35.7101, 139.8107], desc:'世界第二高塔，顶层俯瞰东京全景' },
+  'p4': { id:'p4', name:'上野公园', type:'nature', typeLabel:'公园', region:'上野', coords:[35.7155, 139.7733], desc:'樱花名所，园内有美术馆、动物园、博物馆' },
+  'p5': { id:'p5', name:'筑地外市场', type:'food', typeLabel:'美食市场', region:'银座', coords:[35.6654, 139.7707], desc:'新鲜海鲜和寿司，早餐必打卡的朝市文化' },
+  'p6': { id:'p6', name:'新宿御苑', type:'nature', typeLabel:'庭院', region:'新宿', coords:[35.6851, 139.7100], desc:'融合日式、英式、法式园林的都心绿洲' },
+  'p7': { id:'p7', name:'涩谷十字路口', type:'urban', typeLabel:'城市地标', region:'涩谷', coords:[35.6595, 139.7004], desc:'全球最繁忙路口，每次绿灯近3000人同时过街' },
+  'p8': { id:'p8', name:'明治神宫', type:'shrine', typeLabel:'神社', region:'涩谷', coords:[35.6763, 139.6993], desc:'供奉明治天皇，70万平方米原始森林包围' },
+  'p9': { id:'p9', name:'秋叶原电器街', type:'shopping', typeLabel:'电器街', region:'上野', coords:[35.6987, 139.7730], desc:'动漫、游戏、电器的圣地，亚文化体验必选' },
+  'p10':{ id:'p10',name:'六本木Hills', type:'urban', typeLabel:'综合商圈', region:'银座', coords:[35.6604, 139.7292], desc:'艺术、购物、顶层观景台三合一的城市地标' },
+};
+
+// Day plan structure
+const dayPlans = {
+  1: {
+    confirmed: ['p1','p2','p3'],
+    candidates: ['p4','p9'],
+    locked: false
+  },
+  2: {
+    confirmed: ['p4','p5','p6','p7'],
+    candidates: ['p10'],
+    locked: false
+  },
+  3: {
+    confirmed: [],
+    candidates: ['p8','p10','p9','p5'],
+    locked: false
+  }
+};
+
+let currentDay = 1;
+let map = null;
+let confirmedMarkers = [];
+let candidateMarkers = [];
+let routeLine = null;
+let sortableInstance = null;
+
+// ─── Init ───────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  renderTabs();
+  switchDay(1);
+});
+
+function initMap() {
+  map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false,
+    zoomAnimation: true
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19
+  }).addTo(map);
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+
+function renderTabs() {
+  const container = document.getElementById('tabs');
+  container.innerHTML = '';
+  for (let d = 1; d <= CONFIG.totalDays; d++) {
+    const plan = dayPlans[d];
+    const tab = document.createElement('button');
+    tab.className = 'day-tab' + (plan.locked ? ' locked' : '') + (d === currentDay ? ' active' : '');
+    tab.dataset.day = d;
+    const date = dayOffset(CONFIG.startDate, d - 1);
+    tab.innerHTML = `
+      <span class="tab-check">✓</span>
+      Day ${d}
+      <span style="font-size:11px;color:inherit;opacity:0.7">${date}</span>
+    `;
+    tab.onclick = () => {
+      if (sortableInstance) sortableInstance.option('disabled', plan.locked || false);
+      switchDay(d);
+    };
+    container.appendChild(tab);
+  }
+}
+
+function dayOffset(start, offset) {
+  const d = new Date(start);
+  d.setDate(d.getDate() + offset);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+// ─── Day Switch ───────────────────────────────────────────────────────────────
+
+function switchDay(day) {
+  currentDay = day;
+  document.querySelectorAll('.day-tab').forEach(t => {
+    t.classList.toggle('active', parseInt(t.dataset.day) === day);
+  });
+  renderPanel();
+  renderMap();
+  updateStats();
+  updateLockBtn();
+  updateProgress();
+}
+
+// ─── Panel ────────────────────────────────────────────────────────────────────
+
+function renderPanel() {
+  renderConfirmed();
+  renderCandidates();
+}
+
+function renderConfirmed() {
+  const plan = dayPlans[currentDay];
+  const list = document.getElementById('confirmed-list');
+  list.innerHTML = '';
+
+  if (plan.confirmed.length === 0) {
+    list.innerHTML = '<li class="empty-state">还没有安排地点，从候选点中添加吧</li>';
+    document.getElementById('confirmed-count').textContent = '0 个地点';
+    return;
+  }
+
+  plan.confirmed.forEach((pid, idx) => {
+    const p = PLACES[pid];
+    const li = document.createElement('li');
+    li.dataset.id = pid;
+
+    // Place item
+    const item = document.createElement('div');
+    item.className = 'place-item' + (plan.locked ? ' locked' : '');
+    item.innerHTML = `
+      <span class="drag-handle" title="拖拽排序">⠿</span>
+      <div class="place-num">${idx + 1}</div>
+      <div class="place-info">
+        <div class="place-name">${p.name}</div>
+        <div class="place-meta">
+          <span class="place-type">${p.typeLabel}</span>
+          <span class="place-region-tag">${p.region}</span>
+        </div>
+      </div>
+      <button class="place-remove" title="移除" onclick="removePlace('${pid}')">×</button>
+    `;
+    li.appendChild(item);
+
+    // Transit bar (between items)
+    if (idx < plan.confirmed.length - 1) {
+      const next = PLACES[plan.confirmed[idx + 1]];
+      const straightKm = haversineKm(p.coords[0], p.coords[1], next.coords[0], next.coords[1]);
+      const routeKm = estimateRouteKm(straightKm);
+      const travel = estimateTravelTime(routeKm, CONFIG.is_domestic);
+
+      const bar = document.createElement('div');
+      bar.className = 'transit-bar';
+      bar.innerHTML = `
+        <span class="transit-icon">${travel.icon}</span>
+        <span class="transit-mode">${travel.mode}</span>
+        <span class="transit-sep">·</span>
+        <span class="transit-detail">约 ${routeKm.toFixed(1)}km · 约 ${travel.time}</span>
+        <span class="transit-note">估算值，实际以导航为准</span>
+      `;
+      li.appendChild(bar);
+    }
+
+    list.appendChild(li);
+  });
+
+  document.getElementById('confirmed-count').textContent = `${plan.confirmed.length} 个地点`;
+
+  // Init sortable
+  if (sortableInstance) sortableInstance.destroy();
+  sortableInstance = Sortable.create(list, {
+    animation: 150,
+    handle: '.drag-handle',
+    disabled: plan.locked,
+    ghostClass: 'sortable-ghost',
+    onEnd: (evt) => {
+      const ids = [...list.querySelectorAll('li')].map(li => li.dataset.id);
+      dayPlans[currentDay].confirmed = ids;
+      renderPanel();
+      renderMap();
+      updateStats();
+    }
+  });
+}
+
+function renderCandidates() {
+  const plan = dayPlans[currentDay];
+  const list = document.getElementById('candidate-list');
+  const filter = document.getElementById('region-filter').value;
+  list.innerHTML = '';
+
+  const toShow = plan.candidates.filter(pid => {
+    const p = PLACES[pid];
+    return filter === 'all' || p.region === filter;
+  });
+
+  if (plan.candidates.length === 0) {
+    list.innerHTML = '<li class="empty-state">没有更多候选点了</li>';
+    document.getElementById('candidate-count').textContent = '0 个';
+    return;
+  }
+
+  plan.candidates.forEach(pid => {
+    const p = PLACES[pid];
+    const show = (filter === 'all' || p.region === filter);
+    const li = document.createElement('li');
+    li.dataset.id = pid;
+    li.dataset.region = p.region;
+    if (!show) li.style.display = 'none';
+
+    const item = document.createElement('div');
+    item.className = 'candidate-item';
+    item.innerHTML = `
+      <div class="candidate-dot">+</div>
+      <div class="candidate-info">
+        <div class="candidate-name">${p.name}</div>
+        <div class="candidate-meta">
+          <span class="candidate-type">${p.typeLabel}</span>
+          <span class="candidate-region">${p.region}</span>
+        </div>
+      </div>
+      ${plan.locked ? '' : `<button class="add-btn" onclick="addPlace('${pid}')">+ 加入今天</button>`}
+    `;
+    li.appendChild(item);
+    list.appendChild(li);
+  });
+
+  const visible = toShow.length;
+  document.getElementById('candidate-count').textContent = `${visible} 个`;
+}
+
+function filterCandidates() {
+  renderCandidates();
+  renderMap();
+}
+
+// ─── Place Actions ────────────────────────────────────────────────────────────
+
+function addPlace(pid) {
+  const plan = dayPlans[currentDay];
+  if (plan.confirmed.includes(pid)) return;
+  plan.candidates = plan.candidates.filter(id => id !== pid);
+  plan.confirmed.push(pid);
+  renderPanel();
+  renderMap();
+  updateStats();
+  showToast(`已加入：${PLACES[pid].name}`);
+}
+
+function removePlace(pid) {
+  const plan = dayPlans[currentDay];
+  plan.confirmed = plan.confirmed.filter(id => id !== pid);
+  plan.candidates.unshift(pid);
+  renderPanel();
+  renderMap();
+  updateStats();
+  showToast(`已移除：${PLACES[pid].name}`);
+}
+
+// ─── Map Rendering ────────────────────────────────────────────────────────────
+
+function renderMap() {
+  // Clear existing
+  confirmedMarkers.forEach(m => map.removeLayer(m));
+  candidateMarkers.forEach(m => map.removeLayer(m));
+  if (routeLine) map.removeLayer(routeLine);
+  confirmedMarkers = [];
+  candidateMarkers = [];
+
+  const plan = dayPlans[currentDay];
+  const allCoords = [];
+
+  // Confirmed markers
+  plan.confirmed.forEach((pid, idx) => {
+    const p = PLACES[pid];
+    const m = createConfirmedMarker(p.coords, idx + 1, pid, plan.locked);
+    m.addTo(map);
+    confirmedMarkers.push(m);
+    allCoords.push(p.coords);
+  });
+
+  // Route polyline
+  if (plan.confirmed.length > 1) {
+    routeLine = L.polyline(
+      plan.confirmed.map(pid => PLACES[pid].coords),
+      { color: '#C0392B', weight: 2, dashArray: '6,4', opacity: 0.7 }
+    ).addTo(map);
+  }
+
+  // Candidate markers
+  plan.candidates.forEach(pid => {
+    const p = PLACES[pid];
+    const m = createCandidateMarker(p.coords, pid, plan.locked);
+    m.addTo(map);
+    candidateMarkers.push(m);
+    allCoords.push(p.coords);
+  });
+
+  // Fit bounds
+  if (allCoords.length > 0) {
+    if (allCoords.length === 1) {
+      map.setView(allCoords[0], 15, { animate: true });
+    } else {
+      map.fitBounds(L.latLngBounds(allCoords), { padding: [60, 60], animate: true, maxZoom: 15 });
+    }
+  } else {
+    map.setView([35.689, 139.692], 12);
+  }
+}
+
+function createConfirmedMarker(latlng, num, pid, locked) {
+  const p = PLACES[pid];
+  const icon = L.divIcon({
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    html: `<div style="background:#C0392B;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.25);font-family:'Noto Sans SC',sans-serif">${num}</div>`
+  });
+  const marker = L.marker(latlng, { icon, draggable: false });
+  marker.bindPopup(`
+    <div class="popup-card">
+      <div class="popup-name">${p.name}</div>
+      <div class="popup-type">${p.typeLabel} · ${p.region}</div>
+      <div class="popup-desc">${p.desc}</div>
+      ${locked ? '' : `<div class="popup-actions"><button class="popup-remove-btn" onclick="removePlace('${pid}');document.querySelector('.leaflet-popup-close-button').click()">移除此地点</button></div>`}
+    </div>
+  `, { maxWidth: 220 });
+  return marker;
+}
+
+function createCandidateMarker(latlng, pid, locked) {
+  const p = PLACES[pid];
+  const icon = L.divIcon({
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    html: `<div style="background:white;color:#9CA3AF;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:400;border:2px dashed #9CA3AF;box-shadow:0 1px 4px rgba(0,0,0,0.12)">+</div>`
+  });
+  const marker = L.marker(latlng, { icon, draggable: false });
+  marker.bindPopup(`
+    <div class="popup-card">
+      <div class="popup-name">${p.name}</div>
+      <div class="popup-type">${p.typeLabel} · ${p.region}</div>
+      <div class="popup-desc">${p.desc}</div>
+      ${locked ? '' : `<div class="popup-actions"><button class="popup-add-btn" onclick="addPlace('${pid}');document.querySelector('.leaflet-popup-close-button').click()">+ 加入今天</button></div>`}
+    </div>
+  `, { maxWidth: 220 });
+  return marker;
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+
+function updateStats() {
+  const plan = dayPlans[currentDay];
+  const n = plan.confirmed.length;
+  let totalStraightKm = 0;
+  let totalMins = 0;
+
+  for (let i = 0; i < n - 1; i++) {
+    const p = PLACES[plan.confirmed[i]];
+    const q = PLACES[plan.confirmed[i + 1]];
+    const straight = haversineKm(p.coords[0], p.coords[1], q.coords[0], q.coords[1]);
+    const route = estimateRouteKm(straight);
+    totalStraightKm += straight;
+
+    const travel = estimateTravelTime(route, CONFIG.is_domestic);
+    // Parse the numeric part from travel.time string (e.g. "23分钟（含候车）" → 23)
+    const minsMatch = travel.time.match(/^(\d+)/);
+    if (minsMatch) totalMins += parseInt(minsMatch[1]);
+  }
+
+  const totalRouteKm = estimateRouteKm(totalStraightKm);
+  const modeLabel = CONFIG.is_domestic ? '开车' : '公共交通';
+
+  document.getElementById('stat-places').textContent = n;
+  document.getElementById('stat-dist').textContent = totalRouteKm.toFixed(1);
+  document.getElementById('stat-time').textContent = totalMins;
+
+  // Update bottom bar label to include transport mode
+  const statsEl = document.getElementById('day-stats');
+  statsEl.innerHTML = `
+    <span>共 <span class="stat-val" id="stat-places">${n}</span> 个地点</span>
+    <span>总路程约 <span class="stat-val" id="stat-dist">${totalRouteKm.toFixed(1)}</span> km</span>
+    <span>预计移动 <span class="stat-val" id="stat-time">${totalMins}</span> 分钟（${modeLabel}）</span>
+  `;
+}
+
+function calcDist([lat1,lng1], [lat2,lng2]) {
+  return haversineKm(lat1, lng1, lat2, lng2);
+}
+
+// Haversine 直线距离（km）
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// 路程估算（直线 × 1.35）
+function estimateRouteKm(straightKm) {
+  return straightKm * 1.35;
+}
+
+// 按国内/国外返回 { mode, time, icon }
+function estimateTravelTime(routeKm, isDomestic) {
+  if (isDomestic) {
+    if (routeKm < 2)  return { mode: '开车', time: Math.round(routeKm * 8) + '分钟', icon: '🚗' };
+    if (routeKm < 5)  return { mode: '开车', time: Math.round(routeKm * 6) + '分钟', icon: '🚗' };
+    if (routeKm < 10) return { mode: '开车', time: Math.round(routeKm * 4) + '分钟', icon: '🚗' };
+    return { mode: '开车', time: Math.round(routeKm / 40 * 60) + '分钟', icon: '🚗' };
+  } else {
+    if (routeKm < 0.8) return { mode: '步行', time: Math.round(routeKm * 12) + '分钟', icon: '🚶' };
+    if (routeKm < 3)   return { mode: '步行', time: Math.round(routeKm * 14) + '分钟', icon: '🚶' };
+    if (routeKm < 8)   return { mode: '地铁/公交', time: Math.round(routeKm * 4 + 10) + '分钟（含候车）', icon: '🚇' };
+    return { mode: '地铁+步行', time: Math.round(routeKm * 3 + 15) + '分钟（估算）', icon: '🚇' };
+  }
+}
+
+// ─── Lock ─────────────────────────────────────────────────────────────────────
+
+function updateLockBtn() {
+  const plan = dayPlans[currentDay];
+  const btn = document.getElementById('lock-btn');
+  if (plan.locked) {
+    btn.textContent = '已锁定 ✓';
+    btn.disabled = true;
+    btn.style.background = 'var(--green)';
+    btn.style.opacity = '0.6';
+  } else {
+    btn.innerHTML = '锁定今天的行程 →';
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+}
+
+function lockDay() {
+  const plan = dayPlans[currentDay];
+  if (plan.locked) return;
+  if (plan.confirmed.length === 0) {
+    showToast('请至少安排一个地点再锁定');
+    return;
+  }
+  plan.locked = true;
+  renderTabs();
+  renderPanel();
+  renderMap();
+  updateLockBtn();
+  updateProgress();
+
+  // Check if all locked
+  const allLocked = Object.values(dayPlans).every(p => p.locked);
+  if (allLocked) {
+    document.getElementById('export-btn').style.display = 'inline-block';
+    showToast('所有天数已锁定！可以导出行程结构了');
+    setTimeout(() => openAccomModal(), 1500);
+  } else {
+    // Jump to next unlocked day
+    for (let d = 1; d <= CONFIG.totalDays; d++) {
+      if (!dayPlans[d].locked) {
+        setTimeout(() => switchDay(d), 300);
+        showToast(`Day ${currentDay} 已锁定，跳转到 Day ${d}`);
+        return;
+      }
+    }
+  }
+}
+
+function updateProgress() {
+  const locked = Object.values(dayPlans).filter(p => p.locked).length;
+  document.getElementById('progress-badge').textContent = `已锁定 ${locked} / ${CONFIG.totalDays} 天`;
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+function exportItinerary() {
+  const data = {
+    destination: CONFIG.destination,
+    total_days: CONFIG.totalDays,
+    days: []
+  };
+
+  for (let d = 1; d <= CONFIG.totalDays; d++) {
+    const plan = dayPlans[d];
+    const date = new Date(CONFIG.startDate);
+    date.setDate(date.getDate() + d - 1);
+
+    const regions = [...new Set(plan.confirmed.map(pid => PLACES[pid].region))];
+
+    data.days.push({
+      day: d,
+      date: date.toISOString().split('T')[0],
+      region: regions.join('、') || '待定',
+      places: plan.confirmed.map((pid, i) => ({
+        id: pid,
+        name: PLACES[pid].name,
+        type: PLACES[pid].type,
+        order: i + 1,
+        coords: PLACES[pid].coords
+      })),
+      transport_notes: inferTransportNotes(plan.confirmed)
+    });
+  }
+
+  const json = JSON.stringify(data, null, 2);
+  navigator.clipboard.writeText(json).then(() => {
+    showToast('行程结构已复制到剪贴板 ✓');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('行程结构已复制到剪贴板 ✓');
+  });
+}
+
+function inferTransportNotes(confirmed) {
+  if (confirmed.length < 2) return '今天地点较少';
+  let totalDist = 0;
+  for (let i = 0; i < confirmed.length - 1; i++) {
+    totalDist += calcDist(PLACES[confirmed[i]].coords, PLACES[confirmed[i+1]].coords);
+  }
+  const avg = totalDist / (confirmed.length - 1);
+  return avg < 1.0 ? '今天主要步行可达' : '今天主要步行 + 地铁';
+}
+
+// ─── Accommodation ────────────────────────────────────────────────────────────
+
+function openAccomModal() {
+  document.getElementById('accom-modal').classList.add('open');
+}
+function closeAccomModal() {
+  document.getElementById('accom-modal').classList.remove('open');
+}
+
+function selectChip(chip) {
+  const group = chip.closest('.chip-group');
+  group.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+}
+
+function showAccomResults() {
+  document.getElementById('accom-results').style.display = 'block';
+  document.getElementById('accom-form-wrap').style.display = 'none';
+  document.getElementById('accom-results').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Close modal on backdrop click
+document.getElementById('accom-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeAccomModal();
+});
+</script>
+</body>
+</html>

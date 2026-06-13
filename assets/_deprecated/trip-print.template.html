@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>旅行攻略</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --accent:#C0392B;--gold:#C9A84C;--warm:#E8A020;
+  --ink:#1A1A1A;--ink2:#555;--ink3:#999;--ink4:#BBB;
+  --bg:#FAFAF8;--bg2:#F5F3EF;--bg3:#EEECEA;--border:#E4E0DA;
+  --serif:'Noto Serif SC',serif;--sans:'Noto Sans SC',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:#111;font-family:var(--sans);color:var(--ink)}
+body{display:flex;flex-direction:column}
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#pages-wrap{position:relative;width:1920px;height:1080px;flex-shrink:0;transform-origin:center center}
+.page{position:absolute;top:0;left:0;width:1920px;height:1080px;background:var(--bg);display:none;flex-direction:column;overflow:hidden}
+.page.active{display:flex}
+img{display:block;object-fit:cover}
+.scroll-y{overflow-y:auto;scrollbar-width:thin;scrollbar-color:#D0CCC6 transparent}
+.scroll-y::-webkit-scrollbar{width:4px}
+.scroll-y::-webkit-scrollbar-thumb{background:#D0CCC6;border-radius:2px}
+
+/* ── NAV ── */
+#nav-bar{flex-shrink:0;height:48px;background:#1A1A1A;display:flex;align-items:center;justify-content:center;gap:20px;z-index:9999}
+#nav-bar button{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 12px;opacity:.7;transition:opacity .15s}
+#nav-bar button:hover{opacity:1}
+#page-dots{display:flex;gap:6px;align-items:center}
+.dot{width:6px;height:6px;border-radius:50%;background:#555;cursor:pointer;transition:all .2s}
+.dot.active{background:#fff;transform:scale(1.4)}
+#page-label{color:#666;font:400 11px var(--mono);min-width:100px;text-align:center}
+
+/* ── SHARED ── */
+.day-header{height:56px;background:var(--ink);display:flex;align-items:center;padding:0 40px;gap:16px;flex-shrink:0;overflow:hidden}
+.day-header .d-num{font:500 10px var(--mono);letter-spacing:.25em;color:#aaa;text-transform:uppercase;flex-shrink:0}
+.day-header h2{font:700 22px var(--serif);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+.day-header .d-date{font:400 13px var(--sans);color:#888;margin-left:8px;flex-shrink:0}
+.day-header .d-chips{margin-left:auto;display:flex;gap:8px;overflow:hidden;max-width:42%;flex-shrink:0}
+.d-chip{background:rgba(255,255,255,.1);border-radius:20px;padding:3px 10px;font:400 11px var(--sans);color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+
+.map-link{color:inherit;text-decoration:underline dotted var(--ink3);cursor:pointer}
+.must-badge{position:absolute;top:10px;right:10px;background:var(--gold);color:#fff;font:700 11px var(--mono);padding:3px 10px;border-radius:3px;z-index:2}
+.tr-bar{height:28px;background:#F3F4F6;display:flex;align-items:center;padding:0 88px;gap:12px;font:400 11px var(--sans);color:#888;flex-shrink:0;min-width:0;max-width:100%;overflow:hidden;box-sizing:border-box;width:100%}
+.tr-mode{font-weight:500;color:var(--ink2);flex-shrink:0}
+.tr-km{color:var(--ink3);flex-shrink:0}
+.tr-note{font-size:10px;color:#bbb;flex-shrink:0;margin-left:8px}
+.map-fallback{display:flex;align-items:center;justify-content:center;height:100%;color:#999;font:400 12px var(--sans);text-align:center;background:#F0EDE8;line-height:1.6}
+.type-pill{display:inline-block;background:var(--bg3);border-radius:3px;padding:2px 8px;font:400 10px var(--sans);color:var(--ink3);margin-right:4px}
+
+/* ── COVER ── */
+.cv-left{width:38%;padding:60px 52px;display:flex;flex-direction:column;justify-content:center;background:var(--bg)}
+.cv-label{font:500 10px var(--mono);letter-spacing:.25em;color:var(--ink3);margin-bottom:32px;text-transform:uppercase}
+.cv-title{font:700 64px/1.1 var(--serif);color:var(--ink);margin:0 0 16px}
+.cv-sub{font:400 20px/1.5 var(--sans);color:var(--ink2);margin-bottom:40px}
+.cv-route{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cv-route .rt{background:var(--ink);color:#fff;padding:6px 14px;border-radius:4px;font:500 13px var(--sans)}
+.cv-route .rs{color:var(--ink3);font-size:13px}
+.cv-footer{margin-top:auto;font:400 11px var(--sans);color:var(--ink4)}
+.cv-right{flex:1;position:relative;overflow:hidden}
+.cv-right img{width:100%;height:100%}
+.cv-right::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(250,250,248,.25) 0%,transparent 40%)}
+
+/* ── OVERVIEW ── */
+.ov-header{height:72px;background:var(--ink);display:flex;align-items:center;padding:0 56px;gap:32px;flex-shrink:0}
+.ov-header h2{font:700 24px var(--serif);color:#fff}
+.ov-header span{font:400 13px var(--sans);color:#aaa}
+.ov-body{flex:1;display:flex;overflow:hidden}
+.ov-map-area{flex:1;min-width:0;overflow:hidden}
+.ov-sidebar{width:380px;min-width:0;flex-shrink:0;background:var(--bg2);padding:28px 24px;overflow:hidden;display:flex;flex-direction:column;gap:16px}
+.ov-day-card{background:#fff;border-radius:8px;border:1px solid var(--border);padding:14px 16px}
+.ov-day-card .oc-num{font:500 10px var(--mono);letter-spacing:.2em;color:var(--ink3);text-transform:uppercase;margin-bottom:4px}
+.ov-day-card .oc-theme{font:700 15px var(--sans);color:var(--ink);margin-bottom:6px}
+.ov-day-card .oc-places{font:400 12px var(--sans);color:var(--ink2);line-height:1.7;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.dt-badge{display:inline-block;padding:2px 8px;border-radius:3px;font:500 10px var(--mono);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.dt-standard{background:#EBF3FF;color:#1D5FA6}
+.dt-food{background:#FFF3E0;color:#BF5800}
+.dt-outdoor{background:#E8F5E9;color:#2E7D32}
+.dt-geographic{background:#F3E5F5;color:#7B1FA2}
+.dt-cultural{background:#FBE9E7;color:#BF360C}
+
+/* ── STANDARD ── */
+.std-body{flex:1;display:flex;overflow:hidden;min-width:0}
+.std-left{width:22%;min-width:0;background:var(--bg2);display:flex;flex-direction:column;border-right:1px solid var(--border);flex-shrink:0}
+.std-map-area{flex:1;min-height:0;overflow:hidden}
+.std-reminders{padding:14px 16px;border-top:1px solid var(--border);flex-shrink:0;overflow:hidden}
+.std-reminders h5{font:500 10px var(--mono);letter-spacing:.15em;color:var(--ink3);text-transform:uppercase;margin-bottom:8px}
+.std-rem-item{display:flex;gap:8px;margin-bottom:5px;font:400 11px var(--sans);color:var(--ink2);line-height:1.5;overflow:hidden}
+.std-rem-item::before{content:'!';flex-shrink:0;width:15px;height:15px;background:var(--accent);color:#fff;border-radius:50%;font:700 9px var(--sans);display:flex;align-items:center;justify-content:center;margin-top:1px}
+.std-right{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.std-tl{flex:1;min-width:0;padding:24px 40px 12px;overflow:hidden;position:relative}
+.tl-axis{position:absolute;left:76px;top:28px;bottom:4px;width:2px;background:var(--accent);opacity:.4}
+.tl-node{position:relative;display:flex;gap:0;margin-bottom:8px;overflow:hidden;flex-shrink:0}
+.tl-dot{position:absolute;left:71px;top:28px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);z-index:2;flex-shrink:0}
+/* 时间是标准行程的视觉主角 — 大字 */
+.tl-time-big{position:absolute;left:0;top:16px;width:64px;font:700 42px/1 var(--mono);color:var(--accent);text-align:right;letter-spacing:-.02em;flex-shrink:0}
+.tl-content{flex:1;min-width:0;display:flex;padding-left:96px;gap:14px;padding-bottom:8px;overflow:hidden;max-width:100%;box-sizing:border-box}
+.tl-meta{flex:1;min-width:0;overflow:hidden}
+.tl-name{font:700 16px var(--sans);color:var(--ink);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-intro{font:400 12px var(--sans);color:var(--ink2);line-height:1.6;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.tl-info{display:flex;gap:10px;margin-top:5px;font:400 11px var(--sans);color:var(--ink3);flex-wrap:wrap}
+.tl-img-wrap{width:126px;height:84px;border-radius:6px;overflow:hidden;flex-shrink:0;margin-top:4px}
+.tl-img-wrap img{width:126px;height:84px}
+.tl-node.must-node{border-left:4px solid var(--gold);margin-left:-4px;padding-left:4px;border-radius:2px;background:rgba(201,168,76,.04)}
+.std-meals{height:94px;border-top:1px solid var(--border);padding:10px 40px;display:flex;gap:14px;align-items:center;background:#fff;flex-shrink:0}
+.std-meals-label{font:500 11px var(--mono);letter-spacing:.1em;color:var(--ink3);text-transform:uppercase;writing-mode:vertical-rl;flex-shrink:0}
+.meal-card{display:flex;gap:10px;align-items:center;flex:1;background:var(--bg2);border-radius:6px;padding:8px 12px;height:72px;min-width:0}
+.meal-img{width:48px;height:48px;border-radius:4px;overflow:hidden;flex-shrink:0}
+.meal-img img{width:100%;height:100%}
+.meal-name{font:700 12px var(--sans);color:var(--ink);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meal-type{font:400 10px var(--sans);color:var(--ink3);margin-bottom:1px}
+.meal-price{font:500 11px var(--mono);color:var(--accent)}
+
+/* ── GEOGRAPHIC ── */
+.geo-body{flex:1;display:flex;overflow:hidden}
+.geo-map-half{width:48%;position:relative;display:flex;flex-direction:column}
+.geo-map-inner{flex:1;min-height:0}
+.geo-map-footer{height:44px;background:rgba(0,0,0,.7);display:flex;align-items:center;padding:0 20px;gap:20px;flex-shrink:0}
+.geo-map-footer span{font:500 12px var(--mono);color:#fff}
+.geo-right{flex:1;min-width:0;padding:20px 32px;overflow:hidden;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+.geo-right::-webkit-scrollbar{width:4px}
+.geo-right::-webkit-scrollbar-thumb{background:#D0CCC6;border-radius:2px}
+.geo-transit-card{background:#FFF8E1;border-left:4px solid var(--warm);border-radius:0 8px 8px 0;padding:16px 18px}
+.geo-transit-card h4{font:700 13px var(--sans);color:#8B5000;margin-bottom:10px}
+.geo-tr-row{display:flex;gap:10px;align-items:center;margin-bottom:5px;font:400 12px var(--sans);color:var(--ink2)}
+.geo-badge{background:#BF5800;color:#fff;border-radius:3px;padding:2px 7px;font:500 10px var(--mono);flex-shrink:0}
+.geo-place-item{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;position:relative}
+.geo-num{width:26px;height:26px;background:var(--ink);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 12px var(--sans);flex-shrink:0}
+.geo-thumb{width:64px;height:42px;border-radius:4px;overflow:hidden;flex-shrink:0}
+.geo-thumb img{width:100%;height:100%}
+.geo-place-name{font:700 13px var(--sans);color:var(--ink);margin-bottom:2px}
+.geo-place-sub{font:400 11px var(--sans);color:var(--ink3);line-height:1.5}
+
+/* ── FOOD ── */
+.food-body{flex:1;display:flex;overflow:hidden}
+.food-left{width:20%;background:var(--bg2);display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.food-map-area{flex:1;min-height:0}
+.food-tips{padding:14px;border-top:1px solid var(--border);flex-shrink:0}
+.food-tips h5{font:500 10px var(--mono);letter-spacing:.15em;color:var(--ink3);text-transform:uppercase;margin-bottom:8px}
+.food-tip-item{display:flex;gap:6px;margin-bottom:5px;font:400 11px var(--sans);color:var(--ink2);line-height:1.5}
+.food-tip-item::before{content:'✦';color:var(--warm);flex-shrink:0;font-size:9px;margin-top:2px}
+.food-right{flex:1;min-width:0;padding:14px 32px;overflow:hidden;display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
+.food-right::-webkit-scrollbar{width:4px}
+.food-right::-webkit-scrollbar-thumb{background:#D0CCC6;border-radius:2px}
+.food-node{background:#fff;border:1px solid var(--border);border-radius:10px;display:flex;overflow:hidden;flex-shrink:0;position:relative}
+.food-node-img{width:140px;flex-shrink:0;overflow:hidden}
+.food-node-img img{width:100%;height:100%}
+.food-node-body{flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.food-node-hdr{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.food-node-time{font:500 11px var(--mono);color:var(--accent);flex-shrink:0}
+.food-node-name{font:700 16px var(--sans);color:var(--ink)}
+.food-node-intro{font:400 12px var(--sans);color:var(--ink2);line-height:1.6;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+.food-dishes{display:flex;flex-direction:column;gap:3px}
+.food-dish-row{display:flex;align-items:center;gap:7px;font:400 12px var(--sans);color:var(--ink2)}
+.food-dish-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.food-dish-note{font:400 11px var(--sans);color:var(--ink3)}
+.food-footer{display:flex;gap:12px;font:400 11px var(--sans);color:var(--ink3);margin-top:auto;flex-wrap:wrap}
+.food-price{font:500 11px var(--mono);color:var(--accent)}
+.food-queue{background:#FFF3E0;color:#BF5800;border-radius:3px;padding:1px 7px;font:500 10px var(--sans)}
+.food-need-rsv{background:#E8F0FE;color:#1D5FA6;border-radius:3px;padding:1px 7px;font:500 10px var(--sans)}
+.food-mini{background:#fff;border:1px solid var(--border);border-radius:6px;display:flex;gap:10px;align-items:center;padding:8px 14px;flex-shrink:0}
+.food-mini-time{font:500 11px var(--mono);color:var(--accent);min-width:48px}
+.food-mini-name{font:700 13px var(--sans);color:var(--ink)}
+.food-mini-intro{font:400 11px var(--sans);color:var(--ink3);flex:1;-webkit-line-clamp:1;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+
+/* ── CULTURAL — 顶部地图横条 + 全宽卡片（与 Standard 空间结构完全不同）── */
+.cult-map-strip{height:150px;flex-shrink:0;overflow:hidden;width:100%;position:relative}
+.cult-map-strip-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(to right,rgba(250,250,248,.5) 0%,transparent 25%);pointer-events:none;z-index:1}
+.cult-map-date{position:absolute;top:14px;left:32px;z-index:2;font:700 12px var(--mono);color:var(--ink2);letter-spacing:.08em;background:rgba(250,250,248,.88);padding:4px 12px;border-radius:3px}
+.cult-cards{flex:1;min-height:0;padding:12px 40px 8px;display:flex;flex-direction:column;gap:0;overflow:hidden;box-sizing:border-box}
+.cult-card{background:#fff;border:1px solid var(--border);border-radius:10px;display:flex;overflow:hidden;flex-shrink:0;position:relative}
+.cult-img{width:40%;flex-shrink:0;overflow:hidden;position:relative}
+.cult-img img{width:100%;height:100%;object-fit:cover}
+.cult-time-badge{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.7);color:#fff;border-radius:4px;padding:5px 12px;font:500 13px var(--mono);letter-spacing:.02em}
+/* 文化页用 Serif 字体 — 博物馆导览质感 */
+.cult-body-inner{flex:1;padding:20px 28px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.cult-name{font:700 20px/1.2 var(--serif);color:var(--ink);margin-bottom:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
+.cult-intro{font:400 12px var(--sans);color:var(--ink2);line-height:1.85;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;flex:1}
+.cult-points{display:flex;gap:8px;flex-wrap:wrap;overflow:hidden;flex-shrink:0}
+.cult-point{background:var(--bg2);border-radius:4px;padding:3px 10px;font:400 11px var(--sans);color:var(--ink2)}
+.cult-footer{display:flex;gap:16px;font:400 11px var(--sans);color:var(--ink3);border-top:1px solid var(--border);padding-top:7px;flex-shrink:0}
+.cult-price{font:500 11px var(--mono);color:var(--accent)}
+
+/* ── OUTDOOR ── */
+.outdoor-stats{height:80px;background:#2C3E50;display:flex;align-items:center;padding:0 48px;flex-shrink:0}
+.stat-cell{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,.15)}
+.stat-cell:last-child{border-right:none}
+.stat-val{font:700 28px var(--mono);color:#fff}
+.stat-lbl{font:400 10px var(--sans);letter-spacing:.15em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-top:2px}
+.outdoor-body{flex:1;display:flex;overflow:hidden}
+.outdoor-left{width:22%;background:var(--bg2);display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.outdoor-map-area{flex:1;min-height:0}
+.outdoor-side{padding:12px;border-top:1px solid var(--border);flex-shrink:0}
+.weather-card{background:#EBF3FF;border-radius:6px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:center}
+.weather-icon{font-size:22px;flex-shrink:0}
+.weather-cond{font:700 13px var(--sans);color:#1D5FA6}
+.weather-advice{font:400 10px var(--sans);color:#1D5FA6;opacity:.8;line-height:1.5;margin-top:2px}
+.equip-list h5{font:500 10px var(--mono);letter-spacing:.15em;color:var(--ink3);text-transform:uppercase;margin-bottom:7px}
+.equip-item{display:flex;gap:6px;margin-bottom:4px;font:400 11px var(--sans);color:var(--ink2);line-height:1.5}
+.equip-item.req::before{content:'✓';color:#2E7D32;font-weight:700;flex-shrink:0}
+.equip-item:not(.req)::before{content:'○';color:var(--ink3);flex-shrink:0}
+.outdoor-right{flex:1;min-width:0;padding:18px 36px;overflow:hidden;display:flex;flex-direction:column;gap:12px;box-sizing:border-box}
+.outdoor-right::-webkit-scrollbar{width:4px}
+.outdoor-right::-webkit-scrollbar-thumb{background:#D0CCC6;border-radius:2px}
+.outdoor-node{background:#fff;border:1px solid var(--border);border-radius:10px;display:flex;overflow:hidden;flex-shrink:0;position:relative}
+.outdoor-node-img{width:140px;flex-shrink:0;overflow:hidden;position:relative}
+.outdoor-node-img img{width:100%;height:100%}
+.outdoor-seg{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.7);padding:5px 8px}
+.outdoor-seg .seg-dist{font:500 11px var(--mono);color:#fff}
+.outdoor-seg .seg-time{font:400 10px var(--sans);color:rgba(255,255,255,.7)}
+.outdoor-node-body{flex:1;padding:14px 20px;display:flex;flex-direction:column;gap:5px}
+.outdoor-time{font:500 11px var(--mono);color:var(--accent)}
+.outdoor-name{font:700 16px var(--sans);color:var(--ink)}
+.outdoor-seg-info{font:500 12px var(--mono);color:var(--ink3)}
+.outdoor-intro{font:400 12px var(--sans);color:var(--ink2);line-height:1.6;flex:1}
+.outdoor-warning{background:#FFF3E0;border-left:3px solid #E67E22;border-radius:0 4px 4px 0;padding:5px 10px;font:400 11px var(--sans);color:#8B4513;margin-top:4px}
+.outdoor-footer{display:flex;gap:14px;font:400 11px var(--sans);color:var(--ink3);margin-top:auto}
+.outdoor-safety{height:40px;background:#F39C12;display:flex;align-items:center;padding:0 48px;font:500 12px var(--sans);color:#fff;flex-shrink:0}
+
+/* ── EXTRAS ── */
+.extras-header{height:56px;background:var(--ink);display:flex;align-items:center;padding:0 48px;gap:24px;flex-shrink:0}
+.extras-header h2{font:700 20px var(--serif);color:#fff}
+.tab-btn{background:none;border:none;color:#aaa;font:500 13px var(--sans);cursor:pointer;padding:4px 0;border-bottom:2px solid transparent;transition:all .2s}
+.tab-btn.active{color:#fff;border-bottom-color:#fff}
+.extras-body{flex:1;overflow:hidden;position:relative}
+.extras-tab{position:absolute;inset:0;display:none;padding:28px 48px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#D0CCC6 transparent}
+.extras-tab::-webkit-scrollbar{width:4px}
+.extras-tab::-webkit-scrollbar-thumb{background:#D0CCC6;border-radius:2px}
+.extras-tab.active{display:block}
+.extras-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.extra-card{background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.extra-card img{width:100%;height:140px}
+.extra-card-body{padding:12px 14px}
+.extra-card-name{font:700 14px var(--sans);color:var(--ink);margin-bottom:4px}
+.extra-card-note{font:400 11px var(--sans);color:var(--ink2);line-height:1.5}
+.souvenir-list{display:flex;flex-direction:column;gap:12px}
+.souvenir-row{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 18px;display:flex;gap:16px;align-items:center}
+.sov-name{font:700 14px var(--sans);color:var(--ink);min-width:120px}
+.sov-note{font:400 12px var(--sans);color:var(--ink2);flex:1}
+.sov-where{font:400 12px var(--sans);color:var(--ink3);flex:1}
+.sov-price{font:500 13px var(--mono);color:var(--accent);min-width:80px;text-align:right}
+
+/* ── CHECKLIST ── */
+.cl-header{height:56px;background:var(--ink);display:flex;align-items:center;padding:0 48px;flex-shrink:0}
+.cl-header h2{font:700 20px var(--serif);color:#fff}
+.cl-body{flex:1;padding:28px 48px;display:grid;grid-template-columns:1fr 1fr;gap:32px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#D0CCC6 transparent;background:var(--bg)}
+.cl-body::-webkit-scrollbar{width:4px}
+.cl-body::-webkit-scrollbar-thumb{background:#D0CCC6;border-radius:2px}
+.cl-section h4{font:700 14px var(--sans);color:var(--ink);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--accent)}
+.cl-item{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font:400 13px var(--sans);color:var(--ink2);line-height:1.6}
+.cl-item input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:var(--accent);cursor:pointer}
+.cl-urgent{color:var(--accent);font-weight:500}
+
+@media print {
+  #nav-bar{display:none !important}
+  #stage{position:static;display:block;overflow:visible}
+  #pages-wrap{transform:none !important}
+  .page{display:flex !important;page-break-after:always;position:relative !important}
+  .map-link{text-decoration:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div id="stage"><div id="pages-wrap"></div></div>
+<div id="nav-bar">
+  <button id="nav-prev" onclick="showPage(currentPage-1)">◀</button>
+  <div id="page-dots"></div>
+  <button id="nav-next" onclick="showPage(currentPage+1)">▶</button>
+  <span id="page-label"></span>
+</div>
+
+<script>
+// ===== TEMPLATE PLACEHOLDERS =====
+// {{目的地}} {{IS_DOMESTIC}} {{总天数}} {{人数}} {{出发日期}} {{封面图URL}} {{路线摘要}} {{days}} {{supplement}}
+// ===== END PLACEHOLDERS =====
+
+const TRIP_DATA = {
+  destination: '东京',
+  is_domestic: false,
+  total_days: 5,
+  people: '双人旅行',
+  start_date: '2026年7月10日',
+  cover_image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1920',
+  route_summary: ['成田机场','浅草','新宿','箱根'],
+  days: [
+    {
+      day:1, date:'7月10日', theme:'历史文化深度游',
+      reminders:['寺庙建议8点前到','博物馆提前网购票'],
+      places:[
+        {time:'09:00',type:'sight_cultural',must_visit:true,name:'示例历史寺庙',
+         image:'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400',
+         intro:'江户时代建造的著名寺庙，是当地最重要的文化遗址之一，已有400年历史。每年吸引数百万参观者，早晨最为宁静，可以清晰感受庄严氛围。',
+         cultural_notes:'必看：主殿建筑、庭院石灯笼群、节庆时的装饰',
+         price:'免费',duration:'1.5小时',hours:'06:00-17:00',coords:[35.7148,139.7967]},
+        {time:'11:30',type:'sight_cultural',name:'示例历史博物馆',
+         image:'https://images.unsplash.com/photo-1519638399535-1b036603ac77?w=400',
+         intro:'收藏超过10万件历史文物，常设展览涵盖古代至近代完整历史脉络，是了解本地文化的最权威场所，馆内有详细中文说明。',
+         cultural_notes:'必看：三楼古代武器展、二楼绘画馆、临时特展',
+         price:'¥800',duration:'2小时',hours:'09:30-17:30',closed:'周一',coords:[35.7151,139.7733]},
+        {time:'14:30',type:'sight',name:'示例历史街区',
+         image:'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=400',
+         intro:'保留明治时代建筑风格的老街，现已成为艺术品与手工艺品聚集地，适合漫步和选购伴手礼。',
+         price:'免费',duration:'1.5小时',coords:[35.7080,139.7740]}
+      ],
+      meals:[
+        {name:'示例和食餐厅',type:'和食',image:'https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=120',dish:'定食套餐',price:'¥1200'},
+        {name:'示例拉面店',type:'拉面',image:'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=120',dish:'招牌拉面',price:'¥950'},
+        {name:'示例居酒屋',type:'居酒屋',image:'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=120',dish:'烤鸡串套餐',price:'¥2500'}
+      ]
+    },
+    {
+      day:2, date:'7月11日', theme:'美食探店日',
+      reminders:['寿司店需提前预约','筑地周三定休'],
+      places:[
+        {time:'08:30',type:'meal_breakfast',name:'示例早餐咖啡',
+         image:'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
+         intro:'本地知名手冲咖啡早餐店，食材当季采购，提供多种经典早餐套餐。',
+         dishes:[{name:'厚切吐司套餐',note:'招牌，必点'},{name:'手冲咖啡',note:'现磨'}],
+         price:'¥800',hours:'07:30-14:00',reservation:false,coords:[35.6654,139.7707]},
+        {time:'12:00',type:'meal_lunch',name:'示例寿司店',
+         image:'https://images.unsplash.com/photo-1553621042-f6e147245754?w=400',
+         intro:'老字号寿司店，食材每日市场直送，主厨有三十年经验，性价比极高。',
+         dishes:[{name:'本日特选套餐',note:'随季节变化'},{name:'海胆军舰',note:'北海道直送'}],
+         price:'¥3500',hours:'11:30-14:00',reservation:true,need_queue:false,coords:[35.6594,139.7006]},
+        {time:'15:00',type:'experience_food',name:'示例抹茶体验',
+         image:'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=400',
+         intro:'传统茶室中体验抹茶制作全过程：磨茶、点茶，最后品尝自制抹茶和甜点。',
+         dishes:[{name:'自制抹茶',note:'亲手研磨'},{name:'季节和果子',note:'配套'}],
+         price:'¥2000',hours:'10:00-18:00',reservation:true,coords:[35.6658,139.7126]},
+        {time:'19:00',type:'meal_dinner',name:'示例烤肉店',
+         image:'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=400',
+         intro:'人气极高和牛烤肉店，提供A5和牛各部位拼盘，炭火烤制，烟火气十足。',
+         dishes:[{name:'A5和牛套餐',note:'限量，需提前预约'},{name:'牛舌',note:'必点'}],
+         price:'¥6000',hours:'17:00-23:00',reservation:true,need_queue:false,coords:[35.6919,139.7006]}
+      ]
+    },
+    // Day3: sight+shop → 标准行程型
+    { day:3, date:'7月12日', theme:'城市漫游日',
+      reminders:['涩谷路口傍晚人最多','原宿周末拥挤'],
+      places:[
+        {time:'10:00',type:'sight',name:'示例城市地标',
+         image:'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400',
+         intro:'城市最具代表性地标，登顶俯瞰全市，天气晴朗时视野极佳。',
+         price:'¥2000',duration:'1.5小时',hours:'09:00-22:00',coords:[35.6585,139.7454]},
+        {time:'13:00',type:'shop',name:'示例商业街区',
+         image:'https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=400',
+         intro:'聚集全球潮流品牌与本土设计师的商业街，适合购物和街头文化体验。',
+         price:'免费',duration:'2小时',coords:[35.6658,139.7126]},
+        {time:'16:30',type:'sight',name:'示例城市公园',
+         image:'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=400',
+         intro:'城市中心绿洲，傍晚光线最美，适合漫步休息。',
+         price:'免费',duration:'1小时',coords:[35.6719,139.7100]},
+        {time:'19:00',type:'sight',name:'示例夜景区域',
+         image:'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400',
+         intro:'霓虹与人流构成标志性城市夜景画面，傍晚至深夜最为热闹。',
+         price:'免费',duration:'1小时',coords:[35.6580,139.7016]}
+      ],
+      meals:[
+        {name:'示例拉面馆',type:'拉面',image:'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=120',dish:'招牌豚骨',price:'¥980'},
+        {name:'示例便当店',type:'便当',image:'https://images.unsplash.com/photo-1617196034183-421b4040ed20?w=120',dish:'炸猪排便当',price:'¥650'},
+        {name:'示例居酒屋',type:'居酒屋',image:'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=120',dish:'烤鸡串套餐',price:'¥2000'}
+      ]
+    },
+    // Day4: experience_outdoor + sight_nature → 户外自然型
+    { day:4, date:'7月13日', theme:'高尾山自然徒步',
+      reminders:['雨天建议取消','穿运动鞋带充足饮水'],
+      route_data:{distance:'9.6km',duration:'4-5小时',difficulty:'中等',elevation:'599m'},
+      weather:{icon:'🌤️',condition:'晴',temp:'28°C',advice:'防晒+携带1.5L水，避免正午时段登顶'},
+      equipment:['运动鞋（必须）','防晒霜（必须）','饮水 1.5L（必须）','零食补给','雨具（备用）'],
+      places:[
+        {time:'08:00',type:'transit',name:'前往登山口',
+         image:'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=400',
+         intro:'市中心乘电车约50分钟直达山脚，站内便利店可补给。',
+         price:'¥390',duration:'50分钟',coords:[35.6263,139.2787]},
+        {time:'09:00',type:'experience_outdoor',name:'1号路登顶路线',
+         image:'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400',
+         intro:'全程铺装路面，沿途经过传统寺庙和展望台，相对轻松适合大多数人，途中茶屋可休息补给。',
+         segment:{distance:'3.8km',elevation_gain:'+400m',time:'约2小时'},
+         warning:'部分路段雨后湿滑，注意脚下',
+         price:'免费',duration:'2-2.5小时',coords:[35.6263,139.2787]},
+        {time:'11:30',type:'sight_nature',name:'山顶展望台（599m）',
+         image:'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400',
+         intro:'晴天可远眺富士山全景，是东京近郊最经典登山终点，山顶有热食摊位。',
+         segment:{distance:'顶点',elevation_gain:'0m',time:'停留45分钟'},
+         price:'免费',duration:'45分钟',coords:[35.6253,139.2435]}
+      ]
+    },
+    // Day5: intercity transit → 地理导航型
+    { day:5, date:'7月14日', theme:'移动至箱根·自然温泉',
+      reminders:['新干线需提前购票','温泉礼仪提前了解'],
+      cities:['东京','箱根'],
+      transit_detail:{from:'东京',to:'箱根',method:'新干线',duration:'约50分钟',price:'¥3440',last_train:'22:30'},
+      places:[
+        {time:'08:30',type:'transit',is_intercity:true,name:'东京→箱根 新干线',
+         image:'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=400',
+         intro:'乘坐新干线前往箱根，天气晴好时沿途可远眺富士山。',
+         transit_detail:'东京站→小田原站·约35分钟·¥3440',coords:[35.6812,139.7671]},
+        {time:'11:00',type:'sight_nature',name:'示例湖边公园',
+         image:'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=400',
+         intro:'湖畔公园提供绝佳观景点，清晨和傍晚效果最好，周边设施完善，可步行至温泉旅馆。',
+         price:'免费',duration:'1.5小时',coords:[35.2323,139.0255]},
+        {time:'14:00',type:'sight_nature',name:'示例温泉胜地',
+         image:'https://images.unsplash.com/photo-1545579133-99bb5ad189be?w=400',
+         intro:'日本著名温泉地，泉水来自火山地热，富含多种矿物质，室外露天浴池可眺望山景。',
+         price:'¥1200',duration:'2小时',coords:[35.2282,139.0467]}
+      ]
+    }
+  ],
+  supplement:{
+    backup_sights:[
+      {name:'示例备选景点A',type:'文化',image:'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=300',note:'Day1下午备用，平日人少'},
+      {name:'示例备选景点B',type:'自然',image:'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300',note:'Day3有余裕时可顺路'}
+    ],
+    extra_food:[
+      {name:'示例便当店',type:'便当',image:'https://images.unsplash.com/photo-1617196034099-bb75a75e7b32?w=300',dish:'招牌便当',note:'Day2午餐备选，¥600'}
+    ],
+    souvenirs:[
+      {name:'当地名产A',where:'机场免税店',price:'¥500起',note:'最受欢迎的伴手礼，保质期14天'},
+      {name:'当地手工品B',where:'老城区手工艺市集',price:'¥200起',note:'纯手工制作，每件略有不同'}
+    ]
+  }
+};
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function el(id){ return document.getElementById(id) }
+function mk(tag, cls, html){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(html !== undefined) e.innerHTML = html;
+  return e;
+}
+function mapLink(name){
+  const url = TRIP_DATA.is_domestic
+    ? `https://uri.amap.com/search?keyword=${encodeURIComponent(name)}`
+    : `https://maps.google.com/maps?q=${encodeURIComponent(name)}`;
+  return `<a href="${url}" target="_blank" class="map-link">${name}</a>`;
+}
+
+// ── 图片门禁 ──────────────────────────────────────────────────────────────────
+function checkImages(){
+  const missing = [];
+  TRIP_DATA.days.forEach(d => (d.places||[]).forEach(p => {
+    if(!['transit','free','hotel'].includes(p.type) && (!p.image || !p.image.trim()))
+      missing.push(`Day${d.day} · ${p.name}`);
+  }));
+  if(missing.length){
+    document.body.innerHTML = `<div style="background:#1a1a1a;color:#fff;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;gap:16px;padding:40px">
+      <div style="color:#e74c3c;font-size:28px;font-weight:700">⚠️ 配图未完成，无法生成攻略</div>
+      <div style="color:#aaa;font-size:14px;margin-bottom:8px">以下地点缺少配图，请先补充后重新生成：</div>
+      ${missing.map(m=>`<div style="color:#ffd;font-size:13px">• ${m}</div>`).join('')}
+    </div>`;
+    return false;
+  }
+  return true;
+}
+
+// ── 日类型推断 ────────────────────────────────────────────────────────────────
+function inferDayType(day){
+  const places = day.places || [];
+  const nonTransit = places.filter(p => !['transit','hotel','free'].includes(p.type));
+  const total = nonTransit.length || 1;
+  const cnt = {
+    food: places.filter(p => p.type && p.type.startsWith('meal_')).length,
+    food_exp: places.filter(p => p.type === 'experience_food').length,
+    cultural: places.filter(p => p.type === 'sight_cultural').length,
+    nature: places.filter(p => p.type === 'sight_nature').length,
+    outdoor: places.filter(p => p.type === 'experience_outdoor').length,
+    intercity: places.filter(p => p.type === 'transit' && p.is_intercity).length
+  };
+  if(cnt.intercity > 0 || (day.cities && day.cities.length > 1)) return 'geographic';
+  if(cnt.outdoor > 0 || cnt.nature / total >= 0.5) return 'outdoor';
+  if(cnt.cultural / total >= 0.4 && total <= 4) return 'cultural';
+  if((cnt.food + cnt.food_exp) / total >= 0.4 || cnt.food_exp > 0) return 'food';
+  return 'standard';
+}
+
+// ── 交通衔接条 ─────────────────────────────────────────────────────────────────
+function haversineKm(c1, c2){
+  if(!c1||!c2) return null;
+  const R=6371, r=Math.PI/180;
+  const dLat=(c2[0]-c1[0])*r, dLng=(c2[1]-c1[1])*r;
+  const a=Math.sin(dLat/2)**2+Math.cos(c1[0]*r)*Math.cos(c2[0]*r)*Math.sin(dLng/2)**2;
+  return +(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*1.35).toFixed(1);
+}
+function transitBar(p1, p2){
+  const km = haversineKm(p1 && p1.coords, p2 && p2.coords);
+  if(!km) return '';
+  const dom = TRIP_DATA.is_domestic;
+  let icon, mode, time;
+  if(dom){
+    if(km<2){icon='🚶';mode='步行';time=Math.round(km*14)+'分钟';}
+    else if(km<5){icon='🚗';mode='开车';time=Math.round(km*5)+'分钟';}
+    else{icon='🚗';mode='开车';time=Math.round(km*3+10)+'分钟';}
+  } else {
+    if(km<0.8){icon='🚶';mode='步行';time=Math.round(km*14)+'分钟';}
+    else if(km<8){icon='🚇';mode='地铁/公交';time=Math.round(km*4+10)+'分钟（含候车）';}
+    else{icon='🚇';mode='地铁换乘';time=Math.round(km*3+20)+'分钟（估算）';}
+  }
+  return `<div class="tr-bar"><span>${icon}</span><span class="tr-mode">${mode}</span><span class="tr-km">约${km}km</span><span class="tr-time">${time}</span><span class="tr-note">估算，以导航为准</span></div>`;
+}
+
+// ── 地图初始化 ─────────────────────────────────────────────────────────────────
+const _mapsInit = {};
+function initMap(mapId, places, zoom, dark){
+  if(_mapsInit[mapId]) return;
+  _mapsInit[mapId] = true;
+  const div = document.getElementById(mapId);
+  if(!div) return;
+  const t = setTimeout(()=>{
+    if(!div.classList.contains('leaflet-container'))
+      div.innerHTML='<div class="map-fallback">地图加载中…<br>请确认网络连接</div>';
+  }, 5000);
+  const tile = dark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+  const map = L.map(mapId,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false});
+  L.tileLayer(tile,{maxZoom:19}).addTo(map);
+  map.on('load',()=>{ clearTimeout(t); div._mapOk=true; });
+  const pts = (places||[]).filter(p=>p.coords);
+  if(pts.length){
+    pts.forEach((p,i)=>{
+      L.marker(p.coords,{icon:L.divIcon({className:'',
+        html:`<div style="width:22px;height:22px;background:#C0392B;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px sans-serif;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">${i+1}</div>`,
+        iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+    });
+    L.polyline(pts.map(p=>p.coords),{color:'#C0392B',weight:2,opacity:.65,dashArray:'4 3'}).addTo(map);
+    map.fitBounds(L.polyline(pts.map(p=>p.coords)).getBounds().pad(0.3));
+  } else {
+    map.setView([35.68,139.69],12);
+  }
+}
+
+// ── 页面系统 ──────────────────────────────────────────────────────────────────
+let currentPage = 0;
+let totalPages = 0;
+const _mapQueue = {};
+
+function showPage(n){
+  if(n<0||n>=totalPages) return;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pg = el('page-'+n);
+  if(pg){
+    pg.classList.add('active');
+    if(pg._mapInit){ pg._mapInit(); pg._mapInit=null; }
+  }
+  currentPage = n;
+  updateNav();
+}
+function queueMap(pg, fn){ pg._mapInit = fn; }
+function updateNav(){
+  document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===currentPage));
+  el('page-label').textContent = `第 ${currentPage+1} 页 / 共 ${totalPages} 页`;
+  el('nav-prev').style.opacity = currentPage===0?'.3':'1';
+  el('nav-next').style.opacity = currentPage===totalPages-1?'.3':'1';
+}
+function buildDots(){
+  const d = el('page-dots'); d.innerHTML='';
+  for(let i=0;i<totalPages;i++){
+    const dot = document.createElement('span');
+    dot.className = 'dot'+(i===0?' active':'');
+    dot.onclick=(n=>()=>showPage(n))(i);
+    d.appendChild(dot);
+  }
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight') showPage(currentPage+1);
+  if(e.key==='ArrowLeft') showPage(currentPage-1);
+});
+// Fit the fixed 1920×1080 canvas into any window (laptops are 1440/1512 logical px,
+// so without scaling the right/bottom edges get clipped by overflow:hidden).
+function fit(){
+  const wrap=document.getElementById('pages-wrap');
+  const stage=document.getElementById('stage');
+  if(!wrap||!stage) return;
+  const s=Math.min(stage.clientWidth/1920,stage.clientHeight/1080,1);
+  wrap.style.transform='scale('+s+')';
+}
+window.addEventListener('resize',fit);
+fit();
+
+// ── P-COVER ───────────────────────────────────────────────────────────────────
+function buildCover(){
+  const pg = mk('section'); pg.style.flexDirection='row';
+  const L = mk('div','cv-left');
+  L.innerHTML = `<div class="cv-label">TRAVEL GUIDE</div>
+    <h1 class="cv-title">${TRIP_DATA.destination}</h1>
+    <div class="cv-sub">${TRIP_DATA.people} · ${TRIP_DATA.total_days}天行程 · ${TRIP_DATA.start_date}</div>
+    <div class="cv-route">${TRIP_DATA.route_summary.map((c,i)=>(i>0?'<span class="rs">→</span>':'')+`<span class="rt">${c}</span>`).join('')}</div>
+    <div class="cv-footer">生成于 ${new Date().getFullYear()}年${new Date().getMonth()+1}月${new Date().getDate()}日</div>`;
+  const R = mk('div','cv-right');
+  R.innerHTML = `<img src="${TRIP_DATA.cover_image}" style="width:100%;height:100%">`;
+  pg.appendChild(L); pg.appendChild(R);
+  return pg;
+}
+
+// ── P-OVERVIEW ────────────────────────────────────────────────────────────────
+function buildOverview(){
+  const pg = mk('section');
+  const allPlaces = TRIP_DATA.days.flatMap(d=>d.places||[]).filter(p=>p.coords);
+  pg.innerHTML = `<div class="ov-header"><h2>${TRIP_DATA.destination} 行程总览</h2><span>${TRIP_DATA.total_days}天 · ${TRIP_DATA.people}</span></div>
+    <div class="ov-body">
+      <div class="ov-map-area" id="map-overview"></div>
+      <div class="ov-sidebar" id="ov-sidebar"></div>
+    </div>`;
+  const pgIdx = 1;
+  queueMap(pg, ()=>initMap('map-overview', allPlaces, 11, false));
+  const sidebar = pg.querySelector('#ov-sidebar');
+  TRIP_DATA.days.forEach(day=>{
+    const t = inferDayType(day);
+    const card = mk('div','ov-day-card');
+    card.innerHTML = `<div class="oc-num">DAY ${String(day.day).padStart(2,'0')}</div>
+      <div class="dt-badge dt-${t}">${{standard:'标准行程',geographic:'地理导航',food:'美食市场',cultural:'文化深度',outdoor:'户外自然'}[t]}</div>
+      <div class="oc-theme">${day.theme}</div>
+      <div class="oc-places">${(day.places||[]).filter(p=>p.type!=='transit').map(p=>p.name).join(' · ')}</div>`;
+    sidebar.appendChild(card);
+  });
+  return pg;
+}
+
+// ── 通用节点 must_visit 修饰 ──────────────────────────────────────────────────
+function applyMustVisit(node, place){
+  if(place.must_visit){
+    node.style.borderLeft = '4px solid #C9A84C';
+    node.style.paddingLeft = '0';
+    node.style.borderRadius = '2px';
+    node.style.background = 'rgba(201,168,76,.04)';
+    const badge = mk('div','must-badge','★ 必去');
+    node.style.position = 'relative';
+    node.appendChild(badge);
+  }
+}
+
+// ── P-DAILY: STANDARD ─────────────────────────────────────────────────────────
+function buildStandard(day, hasMust){
+  const pg = mk('section');
+  const mapId = `map-std-${day.day}`;
+  const placesForMap = (day.places||[]).filter(p=>p.coords&&p.type!=='free'&&p.type!=='hotel');
+  pg.innerHTML = `
+    <div class="day-header">
+      <span class="d-num">DAY ${String(day.day).padStart(2,'0')}</span>
+      <h2>${day.theme}</h2><span class="d-date">${day.date}</span>
+      <div class="d-chips">${(day.reminders||[]).slice(0,3).map(r=>`<span class="d-chip">${r}</span>`).join('')}</div>
+    </div>
+    <div class="std-body">
+      <div class="std-left">
+        <div class="std-map-area" id="${mapId}"></div>
+        <div class="std-reminders">
+          <h5>注意事项</h5>
+          <div id="std-rem-${day.day}"></div>
+        </div>
+      </div>
+      <div class="std-right">
+        <div class="std-tl" id="std-tl-${day.day}"><div class="tl-axis"></div></div>
+        <div class="std-meals" id="std-meals-${day.day}">
+          <span class="std-meals-label">今日美食</span>
+        </div>
+      </div>
+    </div>`;
+  queueMap(pg, ()=>initMap(mapId, placesForMap, 13, false));
+  // reminders
+  const remDiv = pg.querySelector(`#std-rem-${day.day}`);
+  (day.reminders||[]).forEach(r=>{
+    const item = mk('div','std-rem-item'); item.textContent = r; remDiv.appendChild(item);
+  });
+  // 高度预算：1080 - 48nav - 56header - 94meals - 36padding = 846px
+  // 4节点时：(846 - 3*28transit) / 4 = 190px 每节点
+  const tl = pg.querySelector(`#std-tl-${day.day}`);
+  const places = day.places||[];
+  const n = places.length || 1;
+  const transitH = (n - 1) * 28;
+  const nodeH = Math.min(Math.floor((846 - transitH) / n), 195);
+  places.forEach((place, i)=>{
+    const node = mk('div','tl-node');
+    node.style.height = nodeH + 'px';
+    node.style.overflow = 'hidden';
+    // 时间拆成小时和分钟显示大字
+    const timeParts = (place.time||'').split(':');
+    const timeHH = timeParts[0]||'';
+    const timeMM = timeParts[1]||'';
+    node.innerHTML = `
+      <div class="tl-time-big" style="font-size:${nodeH>170?'40':'32'}px">${timeHH}<span style="font-size:.55em;opacity:.7">:${timeMM}</span></div>
+      <div class="tl-dot"></div>
+      <div class="tl-content" style="height:${nodeH}px;overflow:hidden">
+        <div class="tl-meta">
+          <div class="tl-name">${mapLink(place.name)}</div>
+          <span class="type-pill">${place.type||''}</span>
+          <div class="tl-intro">${place.intro||''}</div>
+          <div class="tl-info">
+            ${place.price?`<span>💴 ${place.price}</span>`:''}
+            ${place.duration?`<span>⏱ ${place.duration}</span>`:''}
+            ${place.hours?`<span>🕐 ${place.hours}</span>`:''}
+          </div>
+        </div>
+        ${place.image?`<div class="tl-img-wrap"><img src="${place.image}" style="width:126px;height:84px"></div>`:''}
+      </div>`;
+    applyMustVisit(node, place);
+    tl.appendChild(node);
+    if(i < places.length-1) tl.innerHTML += transitBar(place, places[i+1]);
+  });
+  // meals
+  const mealsDiv = pg.querySelector(`#std-meals-${day.day}`);
+  (day.meals||[]).forEach(m=>{
+    const card = mk('div','meal-card');
+    card.innerHTML = `<div class="meal-img"><img src="${m.image||''}" style="width:48px;height:48px"></div>
+      <div class="meal-info">
+        <div class="meal-name">${mapLink(m.name)}</div>
+        <div class="meal-type">${m.type||''} · ${m.dish||''}</div>
+        <div class="meal-price">${m.price||''}</div>
+      </div>`;
+    mealsDiv.appendChild(card);
+  });
+  return pg;
+}
+
+// ── P-DAILY: GEOGRAPHIC ───────────────────────────────────────────────────────
+function buildGeographic(day, hasMust){
+  const pg = mk('section');
+  const mapId = `map-geo-${day.day}`;
+  const placesForMap = (day.places||[]).filter(p=>p.coords);
+  const td = day.transit_detail || {};
+  const intercityPlace = (day.places||[]).find(p=>p.type==='transit'&&p.is_intercity);
+  const otherPlaces = (day.places||[]).filter(p=>!(p.type==='transit'&&p.is_intercity));
+  pg.innerHTML = `
+    <div class="day-header">
+      <span class="d-num">DAY ${String(day.day).padStart(2,'0')}</span>
+      <h2>${day.theme}</h2><span class="d-date">${day.date}</span>
+      <div class="d-chips">${(day.reminders||[]).slice(0,3).map(r=>`<span class="d-chip">${r}</span>`).join('')}</div>
+    </div>
+    <div class="geo-body">
+      <div class="geo-map-half">
+        <div class="geo-map-inner" id="${mapId}"></div>
+        <div class="geo-map-footer">
+          <span>📍 跨城移动日</span>
+          ${td.from&&td.to?`<span>${td.from} → ${td.to}</span>`:''}
+          ${td.duration?`<span>⏱ ${td.duration}</span>`:''}
+        </div>
+      </div>
+      <div class="geo-right" id="geo-right-${day.day}"></div>
+    </div>`;
+  queueMap(pg, ()=>initMap(mapId, placesForMap, 11, false));
+  const right = pg.querySelector(`#geo-right-${day.day}`);
+  if(intercityPlace || td.from){
+    const card = mk('div','geo-transit-card');
+    card.innerHTML = `<h4>今日主要交通</h4>
+      ${td.from?`<div class="geo-tr-row"><span class="geo-badge">${td.method||'交通'}</span><span>${td.from} → ${td.to}</span><span>${td.duration||''}</span><span>${td.price?'¥'+td.price:''}</span></div>`:''}
+      ${intercityPlace?`<div class="geo-tr-row" style="color:#888;font-size:11px">末班：${td.last_train||'请提前查询'} · ${intercityPlace.transit_detail||''}</div>`:''}`;
+    right.appendChild(card);
+  }
+  otherPlaces.forEach((place, i)=>{
+    const item = mk('div','geo-place-item');
+    item.innerHTML = `<div class="geo-num">${i+1}</div>
+      ${place.image?`<div class="geo-thumb"><img src="${place.image}" style="width:64px;height:42px"></div>`:''}
+      <div class="geo-place-info">
+        <div class="geo-place-name">${mapLink(place.name)}</div>
+        <div class="geo-place-sub">${place.intro||''}</div>
+        ${place.price||place.duration?`<div style="margin-top:4px;font:400 11px var(--sans);color:#aaa">${place.price?place.price+' ':''} ${place.duration?'⏱'+place.duration:''}</div>`:''}
+      </div>`;
+    applyMustVisit(item, place);
+    right.appendChild(item);
+    if(i < otherPlaces.length-1) right.innerHTML += transitBar(place, otherPlaces[i+1]);
+  });
+  return pg;
+}
+
+// ── P-DAILY: FOOD ─────────────────────────────────────────────────────────────
+function buildFood(day, hasMust){
+  const pg = mk('section');
+  const mapId = `map-food-${day.day}`;
+  const placesForMap = (day.places||[]).filter(p=>p.coords);
+  pg.innerHTML = `
+    <div class="day-header">
+      <span class="d-num">DAY ${String(day.day).padStart(2,'0')}</span>
+      <h2>${day.theme}</h2><span class="d-date">${day.date}</span>
+      <div class="d-chips">${(day.reminders||[]).slice(0,3).map(r=>`<span class="d-chip">${r}</span>`).join('')}</div>
+    </div>
+    <div class="food-body">
+      <div class="food-left">
+        <div class="food-map-area" id="${mapId}"></div>
+        <div class="food-tips">
+          <h5>今日提醒</h5>
+          <div id="food-tips-${day.day}"></div>
+        </div>
+      </div>
+      <div class="food-right" id="food-right-${day.day}"></div>
+    </div>`;
+  queueMap(pg, ()=>initMap(mapId, placesForMap, 13, false));
+  const tipsDiv = pg.querySelector(`#food-tips-${day.day}`);
+  (day.reminders||[]).forEach(r=>{ const item=mk('div','food-tip-item');item.textContent=r;tipsDiv.appendChild(item); });
+  const right = pg.querySelector(`#food-right-${day.day}`);
+  const places = day.places||[];
+  places.forEach((place,i)=>{
+    const isMeal = place.type&&(place.type.startsWith('meal_')||place.type==='experience_food');
+    if(isMeal){
+      const node = mk('div','food-node');
+      node.style.minHeight = '175px';
+      const dishes = (place.dishes||[]).map(d=>`<div class="food-dish-row"><span class="food-dish-dot"></span><span>${d.name}</span><span class="food-dish-note">${d.note||''}</span></div>`).join('');
+      node.innerHTML = `
+        <div class="food-node-img" style="height:175px">${place.image?`<img src="${place.image}" style="width:140px;height:175px">`:'<div class="map-fallback">无图片</div>'}</div>
+        <div class="food-node-body">
+          <div class="food-node-hdr">
+            <span class="food-node-time">${place.time||''}</span>
+            <span class="food-node-name">${mapLink(place.name)}</span>
+            <span class="type-pill">${place.type||''}</span>
+            ${place.need_queue?'<span class="food-queue">需排队</span>':''}
+            ${place.reservation?'<span class="food-need-rsv">需预约</span>':''}
+          </div>
+          <div class="food-node-intro">${place.intro||''}</div>
+          <div class="food-dishes">${dishes}</div>
+          <div class="food-footer">
+            ${place.price?`<span class="food-price">${place.price}</span>`:''}
+            ${place.hours?`<span>🕐 ${place.hours}</span>`:''}
+            ${place.closed?`<span>🚫 ${place.closed}定休</span>`:''}
+          </div>
+        </div>`;
+      applyMustVisit(node, place);
+      right.appendChild(node);
+    } else {
+      const mini = mk('div','food-mini');
+      mini.innerHTML = `<span class="food-mini-time">${place.time||''}</span>
+        <span class="food-mini-name">${mapLink(place.name)}</span>
+        <span class="food-mini-intro">${place.intro||''}</span>`;
+      right.appendChild(mini);
+    }
+    if(i < places.length-1) right.innerHTML += transitBar(place, places[i+1]);
+  });
+  return pg;
+}
+
+// ── P-DAILY: CULTURAL ─────────────────────────────────────────────────────────
+function buildCultural(day, hasMust){
+  const pg = mk('section');
+  const places = day.places||[];
+  const mapId = `map-cult-${day.day}`;
+  const placesForMap = places.filter(p=>p.coords);
+  // 高度预算：1080 - 48nav - 56header - 150map_strip = 826px for cards area
+  // padding 12+8=20px，can area = 806px
+  // n张卡 + (n-1)*28transit: cardH = (806 - (n-1)*28) / n, cap 215
+  const n = places.length || 1;
+  const cardH = Math.min(Math.floor((806 - (n-1)*28) / n), 215);
+  pg.innerHTML = `
+    <div class="day-header">
+      <span class="d-num">DAY ${String(day.day).padStart(2,'0')}</span>
+      <h2>${day.theme}</h2><span class="d-date">${day.date}</span>
+      <div class="d-chips">${(day.reminders||[]).slice(0,2).map(r=>`<span class="d-chip">${r}</span>`).join('')}</div>
+    </div>
+    <div class="cult-map-strip" id="${mapId}">
+      <div class="cult-map-strip-overlay"></div>
+      <div class="cult-map-date">${day.date} · ${day.theme}</div>
+    </div>
+    <div class="cult-cards" id="cult-cards-${day.day}"></div>`;
+  queueMap(pg, ()=>initMap(mapId, placesForMap, 13, false));
+  const cards = pg.querySelector(`#cult-cards-${day.day}`);
+  const imgW = Math.floor(1840 * 0.38);
+  places.forEach((place,i)=>{
+    const card = mk('div','cult-card');
+    card.style.cssText = `height:${cardH}px;flex-shrink:0;margin-bottom:0`;
+    card.innerHTML = `
+      <div class="cult-img" style="width:${imgW}px;height:${cardH}px;flex-shrink:0">
+        ${place.image?`<img src="${place.image}" style="width:${imgW}px;height:${cardH}px">`:'<div class="map-fallback" style="height:'+cardH+'px">图片待补</div>'}
+        <div class="cult-time-badge">${place.time||''}</div>
+      </div>
+      <div class="cult-body-inner" style="overflow:hidden;min-width:0">
+        <div class="cult-name" style="font:700 ${cardH>180?22:18}px/1.2 var(--serif)">${mapLink(place.name)}</div>
+        <span class="type-pill">${place.type||''}</span>
+        <div class="cult-intro" style="-webkit-line-clamp:${cardH>180?4:3}">${place.intro||''}</div>
+        ${place.cultural_notes?`<div class="cult-points" style="flex-shrink:0"><span style="font:500 11px var(--mono);color:var(--ink3);margin-right:8px">必看</span><span class="cult-point">${place.cultural_notes}</span></div>`:''}
+        <div class="cult-footer" style="flex-shrink:0">
+          ${place.price?`<span class="cult-price">${place.price}</span>`:''}
+          ${place.duration?`<span>⏱ ${place.duration}</span>`:''}
+          ${place.hours?`<span>🕐 ${place.hours}</span>`:''}
+          ${place.closed?`<span>🚫 ${place.closed}定休</span>`:''}
+        </div>
+      </div>`;
+    applyMustVisit(card, place);
+    cards.appendChild(card);
+    if(i < places.length-1){
+      const tb = document.createElement('div');
+      tb.innerHTML = transitBar(place, places[i+1]);
+      if(tb.firstChild) cards.appendChild(tb.firstChild);
+    }
+  });
+  return pg;
+}
+
+// ── P-DAILY: OUTDOOR ─────────────────────────────────────────────────────────
+function buildOutdoor(day, hasMust){
+  const pg = mk('section');
+  const mapId = `map-out-${day.day}`;
+  const rd = day.route_data||{};
+  const placesForMap = (day.places||[]).filter(p=>p.coords);
+  pg.innerHTML = `
+    <div class="outdoor-stats">
+      <div class="stat-cell"><div class="stat-val">${rd.distance||'—'}</div><div class="stat-lbl">总距离</div></div>
+      <div class="stat-cell"><div class="stat-val">${rd.duration||'—'}</div><div class="stat-lbl">预计时长</div></div>
+      <div class="stat-cell"><div class="stat-val">${rd.difficulty||'—'}</div><div class="stat-lbl">难度</div></div>
+      <div class="stat-cell"><div class="stat-val">${rd.elevation||'—'}</div><div class="stat-lbl">爬升</div></div>
+    </div>
+    <div class="day-header">
+      <span class="d-num">DAY ${String(day.day).padStart(2,'0')}</span>
+      <h2>${day.theme}</h2><span class="d-date">${day.date}</span>
+    </div>
+    <div class="outdoor-body">
+      <div class="outdoor-left">
+        <div class="outdoor-map-area" id="${mapId}"></div>
+        <div class="outdoor-side" id="outdoor-side-${day.day}"></div>
+      </div>
+      <div class="outdoor-right" id="outdoor-right-${day.day}"></div>
+    </div>
+    <div class="outdoor-safety">⚠️ ${day.reminders&&day.reminders.length?day.reminders[0]:'出发前请查看天气，携带充足饮水和急救用品'}</div>`;
+  queueMap(pg, ()=>initMap(mapId, placesForMap, 12, false));
+  const side = pg.querySelector(`#outdoor-side-${day.day}`);
+  if(day.weather){
+    const wcard = mk('div','weather-card');
+    wcard.innerHTML = `<span class="weather-icon">${day.weather.icon||'🌤️'}</span>
+      <div><div class="weather-cond">${day.weather.condition||''} ${day.weather.temp||''}</div>
+      <div class="weather-advice">${day.weather.advice||''}</div></div>`;
+    side.appendChild(wcard);
+  }
+  if(day.equipment&&day.equipment.length){
+    const eq = mk('div','equip-list');
+    eq.innerHTML = '<h5>装备清单</h5>';
+    day.equipment.forEach(e=>{
+      const req = e.endsWith('（必须）');
+      const item = mk('div','equip-item '+(req?'req':''));
+      item.textContent = e.replace('（必须）','');
+      eq.appendChild(item);
+    });
+    side.appendChild(eq);
+  }
+  const right = pg.querySelector(`#outdoor-right-${day.day}`);
+  const places = day.places||[];
+  places.forEach((place,i)=>{
+    const node = mk('div','outdoor-node');
+    node.style.minHeight = '130px';
+    node.innerHTML = `
+      <div class="outdoor-node-img" style="height:130px">
+        ${place.image?`<img src="${place.image}" style="width:140px;height:130px">`:'<div class="map-fallback">无图片</div>'}
+        ${place.segment?`<div class="outdoor-seg"><div class="seg-dist">${place.segment.distance||''}</div><div class="seg-time">${place.segment.time||''}</div></div>`:''}
+      </div>
+      <div class="outdoor-node-body">
+        <div class="outdoor-time">${place.time||''}</div>
+        <div class="outdoor-name">${mapLink(place.name)}</div>
+        ${place.segment?`<div class="outdoor-seg-info">${place.segment.elevation_gain||''} ${place.segment.distance||''}</div>`:''}
+        <div class="outdoor-intro">${place.intro||''}</div>
+        ${place.warning?`<div class="outdoor-warning">⚠️ ${place.warning}</div>`:''}
+        <div class="outdoor-footer">
+          ${place.price?`<span>${place.price}</span>`:''}
+          ${place.duration?`<span>⏱ ${place.duration}</span>`:''}
+        </div>
+      </div>`;
+    applyMustVisit(node, place);
+    right.appendChild(node);
+    if(i < places.length-1) right.innerHTML += transitBar(place, places[i+1]);
+  });
+  return pg;
+}
+
+// ── P-EXTRAS ─────────────────────────────────────────────────────────────────
+function hasSupplementContent(){
+  const s = TRIP_DATA.supplement||{};
+  return (s.backup_sights&&s.backup_sights.length)||(s.extra_food&&s.extra_food.length)||(s.souvenirs&&s.souvenirs.length);
+}
+function buildExtras(){
+  const s = TRIP_DATA.supplement||{};
+  const pg = mk('section');
+  pg.innerHTML = `
+    <div class="extras-header">
+      <h2>补充攻略</h2>
+      <button class="tab-btn active" onclick="switchTab('sights',this)">备选景点</button>
+      <button class="tab-btn" onclick="switchTab('efood',this)">备选美食</button>
+      <button class="tab-btn" onclick="switchTab('souv',this)">特产购物</button>
+    </div>
+    <div class="extras-body">
+      <div class="extras-tab active" id="etab-sights">
+        <div class="extras-grid">${(s.backup_sights||[]).map(item=>
+          `<div class="extra-card">${item.image?`<img src="${item.image}" style="height:140px;width:100%">`:''}
+            <div class="extra-card-body">
+              <div class="extra-card-name">${mapLink(item.name)}</div>
+              <span class="type-pill">${item.type||''}</span>
+              <div class="extra-card-note">${item.note||''}</div>
+            </div></div>`).join('')}</div>
+      </div>
+      <div class="extras-tab" id="etab-efood">
+        <div class="extras-grid">${(s.extra_food||[]).map(item=>
+          `<div class="extra-card">${item.image?`<img src="${item.image}" style="height:140px;width:100%">`:''}
+            <div class="extra-card-body">
+              <div class="extra-card-name">${mapLink(item.name)}</div>
+              <div class="extra-card-note">${item.dish||''} · ${item.note||''}</div>
+            </div></div>`).join('')}</div>
+      </div>
+      <div class="extras-tab" id="etab-souv">
+        <div class="souvenir-list">${(s.souvenirs||[]).map(item=>
+          `<div class="souvenir-row">
+            <div class="sov-name">${item.name}</div>
+            <div class="sov-note">${item.note||''}</div>
+            <div class="sov-where">${mapLink(item.where||'')}</div>
+            <div class="sov-price">${item.price||''}</div>
+          </div>`).join('')}</div>
+      </div>
+    </div>`;
+  return pg;
+}
+function switchTab(name, btn){
+  document.querySelectorAll('.extras-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  el('etab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── P-CHECKLIST ───────────────────────────────────────────────────────────────
+function buildChecklist(){
+  const pg = mk('section');
+  pg.innerHTML = `
+    <div class="cl-header"><h2>出发前检查清单</h2></div>
+    <div class="cl-body">
+      <div class="cl-section">
+        <h4>出发前必做</h4>
+        ${['护照/证件有效期确认','机票/车票打印或截图','酒店确认单','需提前预约的门票/体验','签证/入境材料','保险购买','紧急联系人备案','当地交通卡/取现'].map(item=>
+          `<div class="cl-item"><input type="checkbox"><span>${item}</span></div>`).join('')}
+      </div>
+      <div class="cl-section">
+        <h4>行李核查</h4>
+        ${['身份证件+副本','充电宝/充电线','适配器/转换插头','常备药品','换洗衣物','雨具','当地货币/银行卡','紧急联系卡（含酒店地址）'].map(item=>
+          `<div class="cl-item"><input type="checkbox"><span>${item}</span></div>`).join('')}
+      </div>
+    </div>`;
+  return pg;
+}
+
+// ── 主流程 ────────────────────────────────────────────────────────────────────
+(function main(){
+  if(!checkImages()) return;
+  const wrap = el('pages-wrap');
+  const pages = [];
+  pages.push(buildCover());
+  pages.push(buildOverview());
+  TRIP_DATA.days.forEach(day=>{
+    const t = inferDayType(day);
+    const hasMust = (day.places||[]).some(p=>p.must_visit);
+    const builders = {standard:buildStandard,geographic:buildGeographic,food:buildFood,cultural:buildCultural,outdoor:buildOutdoor};
+    pages.push((builders[t]||buildStandard)(day, hasMust));
+  });
+  if(hasSupplementContent()) pages.push(buildExtras());
+  pages.push(buildChecklist());
+  pages.forEach((pg, i)=>{
+    pg.id = 'page-'+i;
+    pg.className = 'page';
+    wrap.appendChild(pg);
+  });
+  totalPages = pages.length;
+  buildDots();
+  showPage(0);
+  console.log('Day type inference:', TRIP_DATA.days.map(d=>`Day${d.day}: ${inferDayType(d)}`).join(', '));
+  console.log('Total pages:', totalPages);
+})();
+</script>
+</body>
+</html>

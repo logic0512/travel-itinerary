@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>目的地发现手册 · {{目的地}}</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script>
+// ===== TEMPLATE PLACEHOLDERS =====
+// {{目的地}}     : 目的地名称（如"东京"或"台湾北部"）
+// {{城市列表}}   : 城市数组 JSON，格式 [{ id, name, desc }]
+// {{天数}}       : 总天数
+// {{人数}}       : 人数描述（如"2人"）
+// {{景点数据}}   : 景点卡片数据数组
+// {{美食数据}}   : 美食卡片数据数组
+// {{体验数据}}   : 独有体验数据数组
+// {{片区数据}}   : 片区介绍数据数组
+// {{城市气质}}   : 目的地气质介绍（3-4句）
+// {{季节推荐}}   : 季节推荐对象 { best: "春", note: "..." }
+// {{当前提醒}}   : 当前时段特别提醒（可为空字符串）
+// ===== END PLACEHOLDERS =====
+
+// ===== DEMO DATA（示例数据，AI 替换时删除此块，填入真实数据）=====
+const DEMO_DATA = {
+  destination: "示例城市",
+  days: 5,
+  travelers: "2人",
+  currentAlert: "当前正值梅雨季节，建议携带雨具，部分户外景点可能临时关闭，出发前请确认开放状态。",
+  cityAtmosphere: "示例城市是一座古典与现代并存的都市，老城区的石板街道保留了数百年前的市井气息，而河边新区则布满了独立书店与精酿酒吧。这里的节奏不紧不慢——早上可以在老茶馆里喝一杯发酵茶，下午踩着光影穿行于古巷，傍晚时分河边的灯笼亮起，整座城市像是一幅会呼吸的水墨画。对喜欢深度游的人来说，三到五天才能真正摸清它的纹理。",
+  seasons: [
+    { name: "春", months: "3–5月", desc: "花季盛开，气候温和，节日活动密集", best: false },
+    { name: "夏", months: "6–8月", desc: "梅雨后转晴热，山区避暑绝佳", best: false },
+    { name: "秋", months: "9–11月", desc: "最佳出行季，天高云淡，人流适中", best: true },
+    { name: "冬", months: "12–2月", desc: "冷冽干燥，温泉旺季，人少价低", best: false }
+  ],
+  cities: [
+    { id: "east", name: "东区", desc: "老城核心" },
+    { id: "west", name: "西区", desc: "文创新区" }
+  ],
+  districts: {
+    east: [
+      {
+        name: "老城南片",
+        tags: ["文化历史", "美食集中", "步行友好"],
+        desc: "老城南片是示例城市最具历史纵深的区域，明清时期的街巷格局保存完好，走几步就能看到刻有年号的门楣。这里适合慢慢踱步、随机转角——不按图索骥反而更有收获。",
+        img: "https://source.unsplash.com/120x80/?old-town,alley,china"
+      },
+      {
+        name: "滨河新街",
+        tags: ["独立餐饮", "夜生活", "拍照胜地"],
+        desc: "滨河新街是近十年新兴的文艺聚集地，老仓库改造的咖啡馆、独立设计师小店散落其间。傍晚时分沿河散步，灯光倒映在水面，是本地人最爱的收工去处。",
+        img: "https://source.unsplash.com/120x80/?riverside,cafe,night"
+      }
+    ],
+    west: [
+      {
+        name: "大学城周边",
+        tags: ["平价美食", "书店密集", "青年文化"],
+        desc: "围绕老牌大学形成的生活圈，二手书店、小剧场、学生食堂林立。氛围轻松随意，是感受城市日常生活的最佳切面，消费水平也比老城区低不少。",
+        img: "https://source.unsplash.com/120x80/?university,campus,bookstore"
+      },
+      {
+        name: "西山脚下",
+        tags: ["自然风光", "寺庙聚集", "徒步路线"],
+        desc: "西山是城市的绿肺，山脚散布着多座不同年代的寺庙建筑群。清晨登山可遇晨练的本地人，傍晚下山正好赶上寺庙晚课，钟声在山谷间回荡。",
+        img: "https://source.unsplash.com/120x80/?mountain,temple,forest"
+      }
+    ]
+  },
+  spots: {
+    east: [
+      {
+        id: "spot-001",
+        city: "east",
+        name: "古城墙遗址公园",
+        district: "老城南片",
+        category: "culture",
+        categoryLabel: "文化历史",
+        img: "https://source.unsplash.com/300x200/?city-wall,ancient,ruins",
+        desc: "古城墙遗址公园保存了约2公里的明代城墙原址，是城市仅存的历史防御工事遗迹。城墙建于1380年，历经战乱与自然侵蚀，部分段落至今仍保有原始砖石。站在墙头可俯瞰整个老城区的屋顶轮廓，与远处现代楼群形成强烈的时间对话。城墙内侧已辟为线性公园，傍晚时本地市民在此散步遛狗，是感受城市日常的绝佳场所。",
+        duration: "1.5–2小时",
+        ticket: "免费",
+        hours: "06:00–21:00",
+        closed: "全年开放",
+        note: "城墙顶部部分路段狭窄，雨天湿滑，建议穿防滑鞋。"
+      },
+      {
+        id: "spot-002",
+        city: "east",
+        name: "百年老茶馆",
+        district: "老城南片",
+        category: "culture",
+        categoryLabel: "文化历史",
+        img: "https://source.unsplash.com/300x200/?teahouse,chinese,traditional",
+        desc: "这家茶馆已有逾百年历史，现由第四代传人经营，是目前城内保存最完整的清末民初风格茶室。木质楼阁、竹帘窗格、手书菜单，一切细节都仿佛定格在某个下午的光影里。茶馆专注本地传统发酵茶，冲泡方式沿用老法，浓酽而不苦涩。来此喝茶不仅是饮品体验，更是一种进入城市时间褶皱的方式——坐下来，时间自然会放慢。",
+        duration: "1–2小时",
+        ticket: "最低消费 ¥25/人",
+        hours: "08:00–20:00",
+        closed: "农历初一、十五不营业",
+        note: ""
+      },
+      {
+        id: "spot-003",
+        city: "east",
+        name: "滨河灯笼走廊",
+        district: "滨河新街",
+        category: "landmark",
+        categoryLabel: "城市地标",
+        img: "https://source.unsplash.com/300x200/?lantern,bridge,river,night",
+        desc: "滨河灯笼走廊是近年来城市最具辨识度的打卡场所，全长约600米的架空廊桥悬挂着3000余盏手工红灯笼，入夜后灯火通明、倒映河面，颇为壮观。走廊由旧码头栈桥改造而来，下方保留了1950年代的码头结构。周末常有本地乐手在走廊拱门处即兴演奏，氛围与白天截然不同。建议天黑后前往，拍照效果最佳。",
+        duration: "45分钟–1小时",
+        ticket: "免费",
+        hours: "全天开放（灯亮时间 18:30–23:00）",
+        closed: "全年开放",
+        note: "游客密集时段为19:00–21:00，如避人流可选择工作日前往。"
+      }
+    ],
+    west: [
+      {
+        id: "spot-004",
+        city: "west",
+        name: "西山云栖寺",
+        district: "西山脚下",
+        category: "nature",
+        categoryLabel: "自然风光",
+        img: "https://source.unsplash.com/300x200/?temple,mountain,mist,zen",
+        desc: "云栖寺始建于唐代，现存主要建筑为明清重修，依山势而建，共七进院落，海拔逐层递升。寺内最著名的是一株据考树龄超过700年的古银杏，秋季叶落时满地金黄，游客需提前一个月预约方可入内观看。寺庙环境极为清幽，常有僧侣在院中习字或打坐，香火不旺但气场沉稳。周边山路有数条徒步线路通往更高处的瞭望台，视野开阔。",
+        duration: "2–3小时（含徒步）",
+        ticket: "¥30/人",
+        hours: "07:00–17:30",
+        closed: "每月初一、十五闭寺（香客日，游客不接待）",
+        note: "秋季银杏观赏期（10月下旬–11月上旬）须至少提前3周网上预约，名额有限。"
+      },
+      {
+        id: "spot-005",
+        city: "west",
+        name: "旧厂房创意园",
+        district: "大学城周边",
+        category: "hidden",
+        categoryLabel: "小众冷门",
+        img: "https://source.unsplash.com/300x200/?industrial,art,gallery,creative",
+        desc: "这片1960年代国营纺织厂的旧厂房在废弃二十年后，被一批本地艺术家自发租用改造，目前聚集了独立摄影展、陶艺工作室、实验音乐小厂牌等约四十家创意单位。不同于商业化改造的文创园，这里保留了大量工业原始结构——锈蚀的吊车、水泥地面的苔痕——与当代艺术作品形成有趣碰撞。没有统一的营业时间，各工作室各自开门，适合漫无目的地闲逛，也常有周末市集或快闪展览。",
+        duration: "1.5–2.5小时",
+        ticket: "园区免费，部分展览单独收费",
+        hours: "各工作室不一，通常 10:00–18:00",
+        closed: "周一多数工作室关闭",
+        note: "建议周末前往，活动更多。可关注园区社交账号提前了解当周活动。"
+      },
+      {
+        id: "spot-006",
+        city: "west",
+        name: "西郊湿地观鸟台",
+        district: "西山脚下",
+        category: "nature",
+        categoryLabel: "自然风光",
+        img: "https://source.unsplash.com/300x200/?wetland,birds,nature,lake",
+        desc: "西郊湿地是城市西部一片面积约300公顷的天然湿地保护区，每年秋冬季节有逾百种候鸟在此停留，是知名度较低但品质极高的观鸟胜地。观鸟台设有专业望远镜供游客免费使用，早晨6点至8点是活动最密集的时段，几乎每次都能遇到专业鸟友。湿地内木栈道全长约4公里，四季景色各异。冬季还有机会看到大面积雾凇奇观。",
+        duration: "2–4小时",
+        ticket: "¥15/人",
+        hours: "06:00–18:00",
+        closed: "全年开放",
+        note: "观鸟建议清晨前往，穿颜色暗沉的衣物，避免惊扰鸟类。望远镜免费借用，需押证件。"
+      }
+    ]
+  },
+  foods: {
+    east: [
+      {
+        id: "food-001",
+        city: "east",
+        name: "老南街米线铺",
+        district: "老城南片",
+        category: "local",
+        categoryLabel: "当地招牌",
+        img: "https://source.unsplash.com/300x200/?noodle,soup,chinese,bowl",
+        desc: "这家米线铺开业于1978年，是老城南片现存历史最长的街头餐馆，三代同堂的经营家族至今坚守自制米线。招牌是发酵米线——米浆经过72小时天然发酵后才下锅，成品带有轻微酸香，与骨汤相融后层次极为丰富。清晨七点开门，本地人已排起队伍，外地游客一般九点后才来，氛围大相径庭。",
+        mustOrder: [
+          { name: "发酵米线（大碗）", note: "汤底浓郁，配花生碎和香葱，是本店灵魂" },
+          { name: "卤蛋+腌萝卜套", note: "卤制时间超过8小时，配米线绝佳" }
+        ],
+        perPerson: "¥15–25",
+        hours: "07:00–14:00（售完即止）",
+        closed: "农历新年关店约10天",
+        reservation: "无需预约，先到先得"
+      },
+      {
+        id: "food-002",
+        city: "east",
+        name: "滨河夜市·烤串区",
+        district: "滨河新街",
+        category: "street",
+        categoryLabel: "街头小吃",
+        img: "https://source.unsplash.com/300x200/?bbq,skewer,night-market,street",
+        desc: "每到傍晚，滨河走廊背后的支巷就变成一条自发形成的烤串夜市，常驻摊位约二十家，大多是经营了十几年的老摊。这里最大的特色是本地特有的香料配方——茴香、藤椒与干辣椒的比例是各家秘而不宣的配方，即使同样是羊肉串，味道也各有差异。建议每家各试一串，自行比较，是很有意思的体验。",
+        mustOrder: [
+          { name: "藤椒羊肉串", note: "询问有无「老摊」字样的摊位，是本地人的心头好" },
+          { name: "炸糯米糕", note: "现炸现吃，外脆内软，配芝麻糖霜" }
+        ],
+        perPerson: "¥30–60",
+        hours: "17:30–00:30",
+        closed: "雨天可能关闭，建议晴天前往",
+        reservation: "无需预约"
+      },
+      {
+        id: "food-003",
+        city: "east",
+        name: "穿堂风·新派本地菜",
+        district: "滨河新街",
+        category: "restaurant",
+        categoryLabel: "餐馆",
+        img: "https://source.unsplash.com/300x200/?chinese-restaurant,modern,interior,dinner",
+        desc: "穿堂风由一位在外地学厨后回乡的本地厨师创办，主理人将本地传统食材与现代烹饪技法结合，菜单随季节轮换。餐厅本身选用一栋1930年代的老宅改造，中庭有一棵大榕树，用餐环境极为舒适。出餐慢是公认的缺点，但食客大多表示值得等待。是少数既能带父母又能带朋友的两用选择。",
+        mustOrder: [
+          { name: "柴火炖豆腐", note: "用本地山泉豆腐，文火慢炖，入味极深" },
+          { name: "时令野菜拼盘", note: "菜单每周变，通常4–6种应季野菜" }
+        ],
+        perPerson: "¥120–180",
+        hours: "11:30–14:00 / 17:30–21:30",
+        closed: "周一休息",
+        reservation: "强烈建议提前1–2天预约，尤其周末"
+      }
+    ],
+    west: [
+      {
+        id: "food-004",
+        city: "west",
+        name: "校门口·豆花摊",
+        district: "大学城周边",
+        category: "dessert",
+        categoryLabel: "甜品饮料",
+        img: "https://source.unsplash.com/300x200/?tofu-pudding,dessert,street-food",
+        desc: "这摊豆花摆在大学西门外已有将近三十年，摊主阿婆每天凌晨四点开始制作，用石膏点豆花，口感嫩滑而不失豆香。特别之处在于同时提供咸甜两种吃法——北方游客可能要在此做一次选择困难。学生放学后是人流最旺的时候，排队二十分钟属于正常。本地学生的午后仪式感。",
+        mustOrder: [
+          { name: "甜豆花（红糖姜汁版）", note: "冬季必选，暖胃驱寒" },
+          { name: "咸豆花（葱花虾皮版）", note: "早餐吃法，咸鲜清淡" }
+        ],
+        perPerson: "¥8–12",
+        hours: "07:00–18:00（豆花售完即止）",
+        closed: "阿婆生病或节假日可能停摊，无提前通知",
+        reservation: "无需预约"
+      },
+      {
+        id: "food-005",
+        city: "west",
+        name: "烟山书屋·手冲咖啡",
+        district: "大学城周边",
+        category: "dessert",
+        categoryLabel: "甜品饮料",
+        img: "https://source.unsplash.com/300x200/?coffee,pour-over,bookshop,cozy",
+        desc: "烟山书屋藏在大学城的一条僻静小巷，外表破旧、内里是安静的书店与咖啡吧的结合体。店主是前图书馆员，选书以人文社科为主，可以花整个下午在这里读书喝咖啡。手冲咖啡用的是自家烘焙的拼配豆，价格公道，口味稳定。这里不追求网红打卡，但口碑在本地文艺青年中极好，是真正适合独自或两人安静消磨时间的地方。",
+        mustOrder: [
+          { name: "招牌拼配手冲", note: "每日单品不同，询问当日豆款" },
+          { name: "肉桂燕麦拿铁", note: "店主自创，肉桂不过分，平衡感好" }
+        ],
+        perPerson: "¥35–55",
+        hours: "10:00–22:00",
+        closed: "每月第一个周一闭店盘点",
+        reservation: "无需预约，但位置有限，下午可能无座"
+      },
+      {
+        id: "food-006",
+        city: "west",
+        name: "山门素食·云栖寺旁",
+        district: "西山脚下",
+        category: "restaurant",
+        categoryLabel: "餐馆",
+        img: "https://source.unsplash.com/300x200/?vegetarian,food,temple,japanese",
+        desc: "山门素食紧邻云栖寺山门而建，主打精进料理风格的素菜，食材全部来自寺院自耕田与周边农户。菜品不用任何人工添加剂，调味以发酵酱料和炭烤为主，味道层次意外丰富。是很多非素食主义者吃完后大为改观的地方。用餐环境极简清净，对话音量自然会降下来，仿佛延续了寺院的气场。",
+        mustOrder: [
+          { name: "炭烤松茸", note: "季节限定，秋季9–11月才有，简单撒盐吃" },
+          { name: "腐皮卷老汤", note: "每日一煮，汤底用五种菌类吊制，极鲜" }
+        ],
+        perPerson: "¥80–150",
+        hours: "11:00–15:00 / 17:00–20:30",
+        closed: "周二休息，特殊法会日闭店",
+        reservation: "建议提前预约，节假日必约"
+      }
+    ]
+  },
+  experiences: {
+    east: [
+      {
+        id: "exp-001",
+        city: "east",
+        name: "老城区夜间私人导览",
+        district: "老城南片",
+        tag: "限20人·每晚一场",
+        img: "https://source.unsplash.com/400x220/?old-town,night,lantern,walking",
+        desc: "这是由本地文史学者发起的小型夜间导览项目，路线完全避开常规景点，专走普通游客不会注意到的老宅内院、废弃戏楼和巷尾祠堂。学者边走边讲述城市地下的历史——哪栋房子曾是地下书局、哪面墙上的弹孔来自哪段战争——配合夜晚的灯光和氛围，有很强的临场感。每晚只接受20人，导览时长约3小时，全程步行约5公里。",
+        duration: "约3小时",
+        price: "¥180/人（含夜宵一份）",
+        timeLimit: "每晚20:00出发，雨天取消",
+        reservation: "需提前3天通过微信报名（公众号：「城市夜读」）"
+      }
+    ],
+    west: [
+      {
+        id: "exp-002",
+        city: "west",
+        name: "陶艺工作坊·旧厂房驻留",
+        district: "大学城周边",
+        tag: "周末限定·4小时",
+        img: "https://source.unsplash.com/400x220/?pottery,ceramics,workshop,hands",
+        desc: "旧厂房创意园内的「土记」陶艺工作室在周末开放对外体验课，由主理人亲自带领，内容包括拉坯、手捏与刻纹三个环节，完成的作品可烧制后快递到家。主理人有十年以上陶艺经验，擅长将本地传统纹样融入现代器型，这个工作坊与那些走马观花的旅游体验点不同——她会根据每位学员的手感调整指导方向，成品有较高的完成度和实用性。是可以带走一件真正属于自己亲手完成的器物的体验。",
+        duration: "4小时",
+        price: "¥320/人（含材料费，作品烧制+邮寄另收¥60）",
+        timeLimit: "仅周六、周日 10:00–14:00，节假日不开课",
+        reservation: "至少提前5天预约，人数上限6人/场"
+      }
+    ]
+  },
+  tips: {
+    visa: {
+      title: "签证/入境",
+      icon: "🛂",
+      items: [
+        "示例国家对中国大陆护照实施免签，停留上限90天",
+        "入境时需出示回程或续程机票证明",
+        "护照有效期须超过预计离境日期6个月以上"
+      ]
+    },
+    currency: {
+      title: "货币/支付",
+      icon: "💴",
+      items: [
+        "本地货币为「示例币」，汇率约1:1.2（人民币:示例币）",
+        "微信支付/支付宝在主要商区通用，老城区小摊仍以现金为主",
+        "建议携带等值¥500–800的现金备用，小额纸币更方便"
+      ]
+    },
+    transport: {
+      title: "交通/出行",
+      icon: "🚌",
+      items: [
+        "市区内公交系统完善，单程票价约¥2–5，支持手机扫码",
+        "老城区限制机动车进入，核心区域步行或骑行为主",
+        "打车APP与国内通用，但老城区叫车需前往指定停靠点"
+      ]
+    },
+    language: {
+      title: "语言/安全",
+      icon: "🗣",
+      items: [
+        "本地语言为示例语，中文可在主要景区和较新的餐馆沟通",
+        "老城小摊多为本地老人经营，可备翻译软件辅助",
+        "整体安全状况良好，夜间单独出行注意贵重物品保管"
+      ]
+    }
+  }
+};
+// ===== END DEMO DATA =====
+</script>
+
+<style>
+/* ===== CSS Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+
+:root {
+  /* 色板 */
+  --bg:          #FAFAF8;
+  --bg-surface:  #F3F2EE;
+  --card:        #FFFFFF;
+  --fg:          #1A1A1A;
+  --fg-muted:    #6B6B6B;
+  --fg-subtle:   #9E9E9E;
+  --line:        #E5E3DC;
+
+  /* 主题色 */
+  --red:         #C0392B;
+  --red-light:   #FDECEA;
+  --red-dark:    #922B21;
+  --gold:        #C78B2B;
+  --gold-light:  #FDF5E6;
+
+  /* 字体 */
+  --font-serif:  "Noto Serif SC", "Songti SC", Georgia, serif;
+  --font-sans:   "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  --font-mono:   "JetBrains Mono", "Courier New", monospace;
+
+  /* 尺寸 */
+  --radius:      6px;
+  --radius-lg:   10px;
+  --header-h:    60px;
+  --bar-h:       52px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  padding-top: calc(var(--header-h) + 44px); /* header + tab nav */
+  padding-bottom: calc(var(--bar-h) + 24px);
+}
+
+/* ===== Fixed Header ===== */
+#site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: var(--fg);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  border-bottom: 2px solid var(--red);
+}
+
+.header-left h1 {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.05em;
+}
+.header-left .subtitle {
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  font-family: var(--font-mono);
+  margin-top: 1px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.selection-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+}
+.selection-count span {
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.btn-export-header {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-export-header:hover { background: var(--red-dark); }
+
+/* ===== City Tab Nav ===== */
+#city-nav {
+  position: fixed;
+  top: var(--header-h);
+  left: 0; right: 0;
+  height: 44px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--line);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 4px;
+}
+#city-nav.single-city { display: none; }
+
+.city-tab {
+  padding: 5px 18px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.city-tab:hover { color: var(--fg); background: rgba(0,0,0,0.04); }
+.city-tab.active {
+  color: var(--red);
+  background: var(--red-light);
+  border-color: rgba(192,57,43,0.25);
+  font-weight: 500;
+}
+
+/* ===== City Panel ===== */
+.city-panel { display: none; }
+.city-panel.active { display: block; }
+
+/* ===== Page Container ===== */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 32px 0;
+}
+
+/* ===== Section Structure ===== */
+.section {
+  margin-bottom: 48px;
+}
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--fg);
+}
+.section-sub {
+  font-size: 12px;
+  color: var(--fg-subtle);
+}
+
+/* ===== Section 1: Overview ===== */
+.overview-body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: start;
+}
+.overview-text {
+  font-size: 14.5px;
+  line-height: 1.85;
+  color: var(--fg);
+}
+
+.seasons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.season-card {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  transition: border-color 0.15s;
+}
+.season-card.best {
+  border-color: var(--red);
+  background: var(--red-light);
+}
+.season-name {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--fg);
+}
+.season-card.best .season-name { color: var(--red); }
+.season-months {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-subtle);
+  display: block;
+  margin: 2px 0 4px;
+}
+.season-desc { font-size: 11.5px; color: var(--fg-muted); line-height: 1.5; }
+.season-badge {
+  display: inline-block;
+  font-size: 9px;
+  background: var(--red);
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 20px;
+  margin-top: 5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.alert-box {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #FFFBEC;
+  border: 1px solid #E8C84A;
+  border-left: 3px solid #E8C84A;
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: #5A4A00;
+  line-height: 1.6;
+}
+.alert-box::before { content: "⚠ 当前提醒　"; font-weight: 600; }
+
+/* ===== Section 2: Districts ===== */
+.district-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.district-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.district-img {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+.district-info { flex: 1; min-width: 0; }
+.district-name {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.district-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+.tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--bg-surface);
+  color: var(--fg-muted);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.district-desc { font-size: 12.5px; color: var(--fg-muted); line-height: 1.6; }
+
+/* ===== Filter Tabs ===== */
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-family: var(--font-sans);
+  color: var(--fg-muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-btn:hover { color: var(--fg); border-color: #bbb; }
+.filter-btn.active {
+  color: var(--red);
+  background: var(--red-light);
+  border-color: rgba(192,57,43,0.3);
+  font-weight: 500;
+}
+
+/* ===== Card Grid ===== */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+.card-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+/* ===== Spot / Food Card ===== */
+.item-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  border-left: 3px solid transparent;
+}
+.item-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+.item-card.mark-must {
+  border-left-color: var(--red);
+}
+.item-card.mark-interest {
+  border-left-color: var(--gold);
+}
+.item-card.mark-skip {
+  opacity: 0.38;
+  filter: grayscale(60%);
+}
+
+.card-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+  background: var(--bg-surface);
+}
+
+/* 三态按钮 */
+.mark-btns {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+}
+.mark-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  color: #888;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.mark-btn:hover { transform: scale(1.1); }
+.mark-btn.active-must {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.mark-btn.active-interest {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #fff;
+}
+.mark-btn.active-skip {
+  background: #999;
+  border-color: #999;
+  color: #fff;
+}
+
+.card-body { padding: 14px 16px 16px; }
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.card-name {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fg);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+.tag-district {
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--bg-surface);
+  color: var(--fg-muted);
+  border-radius: 20px;
+  border: 1px solid var(--line);
+}
+.tag-category {
+  font-size: 10px;
+  padding: 2px 8px;
+  background: var(--red-light);
+  color: var(--red-dark);
+  border-radius: 20px;
+  border: 1px solid rgba(192,57,43,0.2);
+}
+
+.card-desc {
+  font-size: 13px;
+  color: var(--fg-muted);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+.info-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+}
+.info-item .icon { font-size: 11px; }
+.info-item .val {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--fg);
+}
+
+.card-note {
+  font-size: 11.5px;
+  color: #7A5C2B;
+  background: #FFFBEC;
+  border: 1px solid #E8C84A;
+  border-radius: 4px;
+  padding: 6px 10px;
+  line-height: 1.5;
+}
+.card-note::before { content: "⚠ "; }
+
+/* ===== Must-order items ===== */
+.must-order {
+  margin-bottom: 10px;
+}
+.must-order-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--red);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 5px;
+}
+.must-order-list { list-style: none; }
+.must-order-item {
+  font-size: 12.5px;
+  color: var(--fg);
+  padding: 3px 0;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.must-order-item::before {
+  content: "·";
+  color: var(--red);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.must-order-item .dish-note {
+  color: var(--fg-muted);
+  font-size: 11.5px;
+}
+
+/* ===== Experience Card ===== */
+.exp-card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+  border-left: 3px solid transparent;
+}
+.exp-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+.exp-card.mark-must { border-left-color: var(--red); }
+.exp-card.mark-interest { border-left-color: var(--gold); }
+.exp-card.mark-skip { opacity: 0.38; filter: grayscale(60%); }
+
+.exp-img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  background: var(--bg-surface);
+}
+.exp-body { padding: 16px 20px 20px; }
+.exp-name {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.exp-tag-time {
+  display: inline-block;
+  font-size: 10.5px;
+  padding: 2px 10px;
+  background: var(--fg);
+  color: #fff;
+  border-radius: 20px;
+  margin-bottom: 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.exp-desc {
+  font-size: 13.5px;
+  color: var(--fg-muted);
+  line-height: 1.75;
+  margin-bottom: 14px;
+}
+
+/* ===== Tips Section ===== */
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.tip-col {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+.tip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.tip-icon { font-size: 18px; }
+.tip-title {
+  font-family: var(--font-serif);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.tip-list { list-style: none; }
+.tip-list li {
+  font-size: 12px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+  padding: 3px 0 3px 12px;
+  position: relative;
+  border-bottom: 1px solid var(--bg-surface);
+}
+.tip-list li:last-child { border-bottom: none; }
+.tip-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+/* ===== Bottom Bar ===== */
+#bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--bar-h);
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.07);
+}
+.bar-stats {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+.stat-num {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+}
+.stat-item.must .stat-num { color: var(--red); }
+.stat-item.interest .stat-num { color: var(--gold); }
+
+.btn-export {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  padding: 10px 28px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.btn-export:hover { background: var(--red-dark); transform: translateY(-1px); }
+.btn-export:active { transform: translateY(0); }
+
+/* ===== Export Modal ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  width: min(640px, calc(100vw - 48px));
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 700;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--fg-muted);
+  line-height: 1;
+  padding: 0 4px;
+}
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.modal-body pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--fg);
+}
+.modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.btn-copy {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  background: var(--bg-surface);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-copy:hover { background: var(--line); }
+.btn-copy.copied {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border-color: #A5D6A7;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .overview-body { grid-template-columns: 1fr; }
+  .tips-grid { grid-template-columns: repeat(2, 1fr); }
+  .card-grid-2col { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .container { padding: 20px 16px 0; }
+  #site-header { padding: 0 16px; }
+  #city-nav { padding: 0 16px; }
+  #bottom-bar { padding: 0 16px; }
+  .tips-grid { grid-template-columns: 1fr 1fr; }
+  .header-left h1 { font-size: 14px; }
+}
+
+/* Hidden utility */
+.hidden { display: none !important; }
+</style>
+</head>
+
+<body>
+
+<!-- ===== Fixed Header ===== -->
+<header id="site-header">
+  <div class="header-left">
+    <h1>目的地发现手册</h1>
+    <div class="subtitle" id="header-subtitle">加载中…</div>
+  </div>
+  <div class="header-right">
+    <div class="selection-count">已选 <span id="hd-selected">0</span> 个 / 总 <span id="hd-total">0</span> 个</div>
+    <button class="btn-export-header" onclick="openExportModal()">导出我的选择</button>
+  </div>
+</header>
+
+<!-- ===== City Tab Nav ===== -->
+<nav id="city-nav"></nav>
+
+<!-- ===== Main ===== -->
+<main id="main-content"></main>
+
+<!-- ===== Bottom Bar ===== -->
+<div id="bottom-bar">
+  <div class="bar-stats">
+    <div class="stat-item must">
+      <span style="font-size:16px">★</span>
+      <div>
+        <div class="stat-num" id="bar-must">0</div>
+        <div style="font-size:10px;color:var(--fg-subtle)">必去</div>
+      </div>
+    </div>
+    <div class="stat-item interest">
+      <span style="font-size:16px">♡</span>
+      <div>
+        <div class="stat-num" id="bar-interest">0</div>
+        <div style="font-size:10px;color:var(--fg-subtle)">感兴趣</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--fg-subtle);margin-left:8px">
+      共 <span id="bar-total">0</span> 项内容
+    </div>
+  </div>
+  <button class="btn-export" onclick="openExportModal()">导出我的选择</button>
+</div>
+
+<!-- ===== Export Modal ===== -->
+<div class="modal-overlay" id="export-modal" onclick="handleModalClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">导出选择结果</div>
+      <button class="modal-close" onclick="closeExportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <pre id="export-json"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-copy" id="copy-btn" onclick="copyToClipboard()">复制到剪贴板</button>
+      <button class="btn-export" onclick="closeExportModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== JavaScript ===== -->
+<script>
+// ===== State =====
+const STORAGE_KEY = 'discovery_selections';
+let selections = {};  // { [id]: 'must' | 'interest' | 'skip' | null }
+let allItems = [];    // flat list of all cards with metadata
+
+// ===== Load from localStorage =====
+function loadSelections() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) selections = JSON.parse(raw);
+  } catch(e) { selections = {}; }
+}
+
+function saveSelections() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(selections));
+}
+
+// ===== Mark Card =====
+function markCard(id, mark) {
+  const current = selections[id];
+  // Toggle off if clicking the same state
+  if (current === mark) {
+    delete selections[id];
+  } else {
+    selections[id] = mark;
+  }
+  saveSelections();
+  applyCardState(id);
+  updateCounts();
+}
+
+function applyCardState(id) {
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (!card) return;
+  const mark = selections[id] || null;
+
+  // Remove all mark classes
+  card.classList.remove('mark-must', 'mark-interest', 'mark-skip');
+  if (mark) card.classList.add(`mark-${mark}`);
+
+  // Update buttons
+  const btnMust = card.querySelector('.mark-btn[data-mark="must"]');
+  const btnInterest = card.querySelector('.mark-btn[data-mark="interest"]');
+  const btnSkip = card.querySelector('.mark-btn[data-mark="skip"]');
+
+  if (btnMust) btnMust.classList.toggle('active-must', mark === 'must');
+  if (btnInterest) btnInterest.classList.toggle('active-interest', mark === 'interest');
+  if (btnSkip) btnSkip.classList.toggle('active-skip', mark === 'skip');
+}
+
+// ===== Count Update =====
+function updateCounts() {
+  let must = 0, interest = 0, total = allItems.length;
+  for (const id of allItems.map(i => i.id)) {
+    const m = selections[id];
+    if (m === 'must') must++;
+    if (m === 'interest') interest++;
+  }
+  const selected = must + interest;
+
+  document.getElementById('hd-selected').textContent = selected;
+  document.getElementById('hd-total').textContent = total;
+  document.getElementById('bar-must').textContent = must;
+  document.getElementById('bar-interest').textContent = interest;
+  document.getElementById('bar-total').textContent = total;
+}
+
+// ===== Filter =====
+function filterCards(gridId, category) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  const cards = grid.querySelectorAll('[data-category]');
+  cards.forEach(card => {
+    const cat = card.getAttribute('data-category');
+    card.style.display = (category === 'all' || cat === category) ? '' : 'none';
+  });
+}
+
+function activateFilter(btn, gridId, category) {
+  const bar = btn.closest('.filter-bar');
+  bar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterCards(gridId, category);
+}
+
+// ===== City Tab =====
+function switchCity(cityId) {
+  document.querySelectorAll('.city-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.city === cityId);
+  });
+  document.querySelectorAll('.city-panel').forEach(p => {
+    p.classList.toggle('active', p.dataset.city === cityId);
+  });
+}
+
+// ===== Export =====
+function openExportModal() {
+  const data = DEMO_DATA; // AI 替换时改为实际数据对象
+  const must = [], interested = [];
+
+  for (const item of allItems) {
+    const m = selections[item.id];
+    if (m === 'must') must.push({ id: item.id, name: item.name, type: item.type, city: item.city, category: item.category });
+    if (m === 'interest') interested.push({ id: item.id, name: item.name, type: item.type, city: item.city, category: item.category });
+  }
+
+  const output = {
+    destination: data.destination,
+    exported_at: new Date().toLocaleString('zh-CN'),
+    must_visit: must,
+    interested: interested,
+    total_selected: must.length + interested.length
+  };
+
+  document.getElementById('export-json').textContent = JSON.stringify(output, null, 2);
+  document.getElementById('export-modal').classList.add('open');
+}
+
+function closeExportModal() {
+  document.getElementById('export-modal').classList.remove('open');
+  const btn = document.getElementById('copy-btn');
+  btn.textContent = '复制到剪贴板';
+  btn.classList.remove('copied');
+}
+
+function handleModalClick(e) {
+  if (e.target === e.currentTarget) closeExportModal();
+}
+
+function copyToClipboard() {
+  const text = document.getElementById('export-json').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '已复制 ✓';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '复制到剪贴板';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ===== HTML Builders =====
+function buildMarkBtns(id) {
+  return `<div class="mark-btns">
+    <button class="mark-btn" data-mark="must" title="★ 必去" onclick="markCard('${id}','must')">★</button>
+    <button class="mark-btn" data-mark="interest" title="♡ 感兴趣" onclick="markCard('${id}','interest')">♡</button>
+    <button class="mark-btn" data-mark="skip" title="— 跳过" onclick="markCard('${id}','skip')">—</button>
+  </div>`;
+}
+
+function buildInfoRow(items) {
+  return `<div class="info-row">${items.map(i =>
+    `<div class="info-item"><span class="icon">${i.icon}</span><span class="val">${i.val}</span></div>`
+  ).join('')}</div>`;
+}
+
+function buildSpotCard(spot) {
+  return `
+<div class="item-card" data-id="${spot.id}" data-category="${spot.category}">
+  ${buildMarkBtns(spot.id)}
+  <img class="card-img" src="${spot.img}" alt="${spot.name}" loading="lazy" onerror="this.style.background='#E5E3DC'">
+  <div class="card-body">
+    <div class="card-name">${spot.name}</div>
+    <div class="card-meta">
+      <span class="tag-district">${spot.district}</span>
+      <span class="tag-category">${spot.categoryLabel}</span>
+    </div>
+    <p class="card-desc">${spot.desc}</p>
+    ${buildInfoRow([
+      { icon: '⏱', val: spot.duration },
+      { icon: '💴', val: spot.ticket },
+      { icon: '🕐', val: spot.hours },
+      { icon: '📅', val: spot.closed }
+    ])}
+    ${spot.note ? `<div class="card-note">${spot.note}</div>` : ''}
+  </div>
+</div>`;
+}
+
+function buildFoodCard(food) {
+  const mustItems = food.mustOrder.map(m =>
+    `<li class="must-order-item">${m.name} <span class="dish-note">— ${m.note}</span></li>`
+  ).join('');
+  return `
+<div class="item-card" data-id="${food.id}" data-category="${food.category}">
+  ${buildMarkBtns(food.id)}
+  <img class="card-img" src="${food.img}" alt="${food.name}" loading="lazy" onerror="this.style.background='#E5E3DC'">
+  <div class="card-body">
+    <div class="card-name">${food.name}</div>
+    <div class="card-meta">
+      <span class="tag-district">${food.district}</span>
+      <span class="tag-category">${food.categoryLabel}</span>
+    </div>
+    <p class="card-desc">${food.desc}</p>
+    <div class="must-order">
+      <div class="must-order-title">必点</div>
+      <ul class="must-order-list">${mustItems}</ul>
+    </div>
+    ${buildInfoRow([
+      { icon: '💴', val: food.perPerson + '/人' },
+      { icon: '🕐', val: food.hours },
+      { icon: '📅', val: food.closed },
+      { icon: '📞', val: food.reservation }
+    ])}
+  </div>
+</div>`;
+}
+
+function buildExpCard(exp) {
+  return `
+<div class="exp-card" data-id="${exp.id}" data-category="exp">
+  ${buildMarkBtns(exp.id)}
+  <img class="exp-img" src="${exp.img}" alt="${exp.name}" loading="lazy" onerror="this.style.background='#E5E3DC'">
+  <div class="exp-body">
+    <div class="exp-name">${exp.name}</div>
+    <div class="exp-tag-time">${exp.tag}</div>
+    <p class="exp-desc">${exp.desc}</p>
+    ${buildInfoRow([
+      { icon: '⏱', val: exp.duration },
+      { icon: '💴', val: exp.price },
+      { icon: '📅', val: exp.timeLimit },
+      { icon: '📞', val: exp.reservation }
+    ])}
+  </div>
+</div>`;
+}
+
+function buildCityPanel(cityId, data) {
+  const spots = (data.spots[cityId] || []);
+  const foods = (data.foods[cityId] || []);
+  const exps = (data.experiences[cityId] || []);
+  const districts = (data.districts[cityId] || []);
+
+  // Register all items
+  spots.forEach(s => allItems.push({ id: s.id, name: s.name, type: 'spot', city: cityId, category: s.category }));
+  foods.forEach(f => allItems.push({ id: f.id, name: f.name, type: 'food', city: cityId, category: f.category }));
+  exps.forEach(e => allItems.push({ id: e.id, name: e.name, type: 'experience', city: cityId, category: 'exp' }));
+
+  // District cards
+  const districtCards = districts.map(d => `
+<div class="district-card">
+  <img class="district-img" src="${d.img}" alt="${d.name}" loading="lazy" onerror="this.style.background='#E5E3DC'">
+  <div class="district-info">
+    <div class="district-name">${d.name}</div>
+    <div class="district-tags">${d.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+    <p class="district-desc">${d.desc}</p>
+  </div>
+</div>`).join('');
+
+  // Spot filter categories
+  const spotCats = [...new Set(spots.map(s => s.category))];
+  const spotFilterBtns = `
+<button class="filter-btn active" onclick="activateFilter(this, 'spots-grid-${cityId}', 'all')">全部</button>
+${spotCats.includes('culture') ? `<button class="filter-btn" onclick="activateFilter(this, 'spots-grid-${cityId}', 'culture')">文化历史</button>` : ''}
+${spotCats.includes('nature') ? `<button class="filter-btn" onclick="activateFilter(this, 'spots-grid-${cityId}', 'nature')">自然风光</button>` : ''}
+${spotCats.includes('landmark') ? `<button class="filter-btn" onclick="activateFilter(this, 'spots-grid-${cityId}', 'landmark')">城市地标</button>` : ''}
+${spotCats.includes('hidden') ? `<button class="filter-btn" onclick="activateFilter(this, 'spots-grid-${cityId}', 'hidden')">小众冷门</button>` : ''}`;
+
+  // Food filter categories
+  const foodCats = [...new Set(foods.map(f => f.category))];
+  const foodFilterBtns = `
+<button class="filter-btn active" onclick="activateFilter(this, 'foods-grid-${cityId}', 'all')">全部</button>
+${foodCats.includes('local') ? `<button class="filter-btn" onclick="activateFilter(this, 'foods-grid-${cityId}', 'local')">当地招牌</button>` : ''}
+${foodCats.includes('street') ? `<button class="filter-btn" onclick="activateFilter(this, 'foods-grid-${cityId}', 'street')">街头小吃</button>` : ''}
+${foodCats.includes('restaurant') ? `<button class="filter-btn" onclick="activateFilter(this, 'foods-grid-${cityId}', 'restaurant')">餐馆</button>` : ''}
+${foodCats.includes('dessert') ? `<button class="filter-btn" onclick="activateFilter(this, 'foods-grid-${cityId}', 'dessert')">甜品饮料</button>` : ''}`;
+
+  // Season cards
+  const seasonCards = data.seasons.map(s => `
+<div class="season-card ${s.best ? 'best' : ''}">
+  <span class="season-name">${s.name}</span>
+  <span class="season-months">${s.months}</span>
+  <p class="season-desc">${s.desc}</p>
+  ${s.best ? '<span class="season-badge">推荐出行</span>' : ''}
+</div>`).join('');
+
+  // Tips
+  const tips = data.tips;
+  const tipsHtml = Object.values(tips).map(tip => `
+<div class="tip-col">
+  <div class="tip-header">
+    <span class="tip-icon">${tip.icon}</span>
+    <span class="tip-title">${tip.title}</span>
+  </div>
+  <ul class="tip-list">${tip.items.map(item => `<li>${item}</li>`).join('')}</ul>
+</div>`).join('');
+
+  return `
+<div class="city-panel ${cityId === data.cities[0].id ? 'active' : ''}" data-city="${cityId}">
+  <div class="container">
+
+    <!-- Section 1: Overview -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">目的地概览</h2>
+        <span class="section-sub">了解这座城市的气质与节奏</span>
+      </div>
+      <div class="overview-body">
+        <div>
+          <p class="overview-text">${data.cityAtmosphere}</p>
+          ${data.currentAlert ? `<div class="alert-box">${data.currentAlert}</div>` : ''}
+        </div>
+        <div>
+          <div class="seasons-grid">${seasonCards}</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Districts -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">片区导读</h2>
+        <span class="section-sub">找到属于你的城市切面</span>
+      </div>
+      <div class="district-grid">${districtCards}</div>
+    </section>
+
+    <!-- Section 3: Spots -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">景点库</h2>
+        <span class="section-sub">${spots.length} 个景点 · 标记你的选择</span>
+      </div>
+      <div class="filter-bar">${spotFilterBtns}</div>
+      <div class="card-grid" id="spots-grid-${cityId}">
+        ${spots.map(buildSpotCard).join('')}
+      </div>
+    </section>
+
+    <!-- Section 4: Foods -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">美食库</h2>
+        <span class="section-sub">${foods.length} 个推荐 · 标记你的选择</span>
+      </div>
+      <div class="filter-bar">${foodFilterBtns}</div>
+      <div class="card-grid" id="foods-grid-${cityId}">
+        ${foods.map(buildFoodCard).join('')}
+      </div>
+    </section>
+
+    <!-- Section 5: Experiences -->
+    ${exps.length > 0 ? `
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">独有体验</h2>
+        <span class="section-sub">只有这里才能做的事</span>
+      </div>
+      <div class="card-grid-2col">
+        ${exps.map(buildExpCard).join('')}
+      </div>
+    </section>` : ''}
+
+    <!-- Section 6: Tips -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">实用提示</h2>
+        <span class="section-sub">出行前必读</span>
+      </div>
+      <div class="tips-grid">${tipsHtml}</div>
+    </section>
+
+  </div>
+</div>`;
+}
+
+// ===== Init =====
+function init() {
+  const data = DEMO_DATA;
+  loadSelections();
+
+  // Header subtitle
+  document.getElementById('header-subtitle').textContent =
+    `${data.destination} · ${data.days}天 · ${data.travelers}`;
+
+  // City nav
+  const nav = document.getElementById('city-nav');
+  const isSingle = data.cities.length <= 1;
+  if (isSingle) {
+    nav.classList.add('single-city');
+    document.body.style.paddingTop = 'calc(var(--header-h))';
+  } else {
+    data.cities.forEach(city => {
+      const btn = document.createElement('button');
+      btn.className = 'city-tab' + (city.id === data.cities[0].id ? ' active' : '');
+      btn.dataset.city = city.id;
+      btn.textContent = `${city.name}`;
+      btn.onclick = () => switchCity(city.id);
+      nav.appendChild(btn);
+    });
+  }
+
+  // Build panels
+  const main = document.getElementById('main-content');
+  data.cities.forEach(city => {
+    main.innerHTML += buildCityPanel(city.id, data);
+  });
+
+  // Apply saved states
+  allItems.forEach(item => applyCardState(item.id));
+  updateCounts();
+}
+
+// Run immediately if DOM is ready, else wait
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+
+</body>
+</html>

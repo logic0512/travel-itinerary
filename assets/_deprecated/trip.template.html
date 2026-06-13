@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=3">
-<title>🍜 柳州 3 天 · 攻略</title>
+<title>{{DESTINATION}} {{DAYS}} 天 · 攻略</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="theme.css">
 <style>
@@ -87,10 +87,10 @@
 
 <header class="top-bar">
   <div>
-    <div class="dest">🍜 柳州 3 天攻略</div>
-    <div class="dates">2026.5.2 → 5.4 · 情侣 2 人 · 深圳 ⇄ 柳州</div>
+    <div class="dest" id="trip-title">{{DESTINATION}} {{DAYS}} 天攻略</div>
+    <div class="dates" id="trip-subtitle">{{DATE_RANGE}} · {{PEOPLE}} 人 · {{ORIGIN_DESTINATION}}</div>
   </div>
-  <div class="day-chip">Day <strong id="current-day">1</strong>/3</div>
+  <div class="day-chip">Day <strong id="current-day">1</strong>/<span id="total-days">{{DAYS}}</span></div>
 </header>
 
 <div class="sticky-ctx" id="sticky-ctx"></div>
@@ -138,6 +138,9 @@
 </button>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script id="trip-data" type="application/json">
+{{TRIP_DATA_JSON}}
+</script>
 <script>
 /* === 数据加载（从同目录 trip.json 拉 · 用 fetch） === */
 let TRIP = null;
@@ -164,7 +167,8 @@ function archetypeLimit(key) {
   return (ARCHETYPE_LIMITS[ARCHETYPE] || ARCHETYPE_LIMITS.medium)[key];
 }
 const TILE = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-const dotIcon = L.divIcon({ html: '<div class="pin-dot"></div>', iconSize: [11,11], iconAnchor: [5,5] });
+const HAS_LEAFLET = typeof window.L !== 'undefined';
+const dotIcon = HAS_LEAFLET ? L.divIcon({ html: '<div class="pin-dot"></div>', iconSize: [11,11], iconAnchor: [5,5] }) : null;
 
 function encode(s) { return encodeURIComponent(s); }
 function mapApple(q)  { return `https://maps.apple.com/?q=${encode(q)}`; }
@@ -179,20 +183,22 @@ function getRegion(cardId) {
 
 /* === 上下文贴条 === */
 function renderStickyCtx() {
-  const g = TRIP.global;
+  const g = TRIP.global || {};
   const ct = document.getElementById('sticky-ctx');
-  ct.innerHTML = `
-    <span>📞 <strong>110 / 120</strong></span>
-    <span>🏛️ 柳州 12345</span>
-    <span>☔ 28-32℃ · 偶阵雨</span>
-    <span>🍜 嗦粉怕酸说『少酸笋多花生』</span>
-    <span>💴 国内行 · 微信/支付宝全通</span>
-  `;
+  const items = g.quick_context || [
+    `📞 <strong>${g.emergency_phone || '紧急电话见上方'}</strong>`,
+    g.local_hotline ? `🏛️ ${g.local_hotline}` : '🏛️ 目的地服务信息见须知',
+    g.weather_hint ? `☔ ${g.weather_hint}` : '☔ 天气见每日栏',
+    g.local_tip ? `💡 ${g.local_tip}` : '💡 关键提醒见须知',
+    g.payment_hint ? `💳 ${g.payment_hint}` : '💳 支付/现金见须知'
+  ];
+  ct.innerHTML = items.filter(Boolean).map(x => `<span>${x}</span>`).join('');
 }
 
 /* === v2.3 #3 Day 导航（加片区色点） === */
 function renderDayNav() {
   const nav = document.getElementById('day-nav');
+  nav.style.setProperty('--day-count', TRIP.days.length);
   TRIP.days.forEach((d, i) => {
     const regionVar = d.region ? `--region-${d.region}` : '--region-default';
     const regionColor = getComputedStyle(document.documentElement)
@@ -447,7 +453,7 @@ function renderDay(d, dayIdx) {
 
   const html = `
     <div class="day-header" onclick="this.parentElement.classList.toggle('collapsed')">
-      <div class="num">DAY ${d.num} / 3 · ${d.date.replace(/-/g,'.')} ${d.weekday}</div>
+      <div class="num">DAY ${d.num} / ${TRIP.days.length} · ${d.date.replace(/-/g,'.')} ${d.weekday}</div>
       <div class="date">${d.theme}<span class="status" id="status-${d.num}" style="display:none;">进行中</span></div>
       <div class="theme">🏨 ${d.hotel || ''}${d.region_label ? ' · 📍 ' + d.region_label : ''}</div>
     </div>
@@ -502,13 +508,14 @@ function renderAlt(d) {
     foods.splice(altLimit);
   }
 
+  const mapCity = TRIP?.meta?.city || TRIP?.meta?.destination || '';
   const itemHtml = (x) => `
     <div class="alt-item ${x.nearby ? 'nearby' : 'far'}">
       <div class="name">${x.card.emoji || ''} ${x.card.name}</div>
       <div class="desc">${x.card.highlight || ''}</div>
       ${x.dist ? `<span class="dist">📏 ${x.dist}</span>` : ''}
-      <a class="link" href="${mapGoogle(x.card.name + ' 柳州')}" target="_blank">→ 地图</a>
-      <a class="link" href="${imgSearch(x.card.name + ' 柳州')}" target="_blank">🔍 图</a>
+      <a class="link" href="${mapGoogle([x.card.name, mapCity].filter(Boolean).join(' '))}" target="_blank">→ 地图</a>
+      <a class="link" href="${imgSearch([x.card.name, mapCity].filter(Boolean).join(' '))}" target="_blank">🔍 图</a>
     </div>
   `;
 
@@ -539,6 +546,11 @@ function renderDays() {
 /* === 每日地图缩略 === */
 function renderDayMapThumb(d) {
   const coords = collectDayCoords(d);
+  if (!HAS_LEAFLET) {
+    const box = document.getElementById(`daymap-${d.num}`);
+    if (box) box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:12px;color:var(--muted);font-size:12px;text-align:center;">离线地图组件未加载 · 点击查看文字路线与外部地图链接</div>`;
+    return;
+  }
   if (coords.length < 2) {
     const box = document.getElementById(`daymap-${d.num}`);
     if (box) box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px;">本日无地图坐标 · 点击查看文字路线</div>`;
@@ -575,11 +587,12 @@ function openDayMap(dayNum) {
   const d = TRIP.days.find(x => x.num === dayNum);
   const coords = collectDayCoords(d);
   const hasCoords = coords.length >= 2;
+  const hasMap = hasCoords && HAS_LEAFLET;
 
   document.getElementById('modal-title').textContent = `Day ${dayNum} · ${d.theme} · 完整路线`;
   const body = document.getElementById('modal-body');
   body.innerHTML = `
-    ${hasCoords ? '<div class="modal-big-map" id="modal-big-map"></div>' : '<div style="padding:18px;color:var(--muted);text-align:center;font-size:12.5px;">本日无地图坐标</div>'}
+    ${hasMap ? '<div class="modal-big-map" id="modal-big-map"></div>' : '<div style="padding:18px;color:var(--muted);text-align:center;font-size:12.5px;">地图组件未加载或本日坐标不足，下面保留文字路线</div>'}
     ${hasCoords ? `<a class="modal-route-btn" href="${buildGoogleRouteUrl(coords)}" target="_blank">📍 在 Google Maps 看完整路线（公交模式）</a>` : ''}
     <div class="modal-route-list">
       <h4>📜 今日路线</h4>
@@ -594,7 +607,7 @@ function openDayMap(dayNum) {
   `;
   document.getElementById('modal').classList.add('show');
 
-  if (hasCoords) {
+  if (hasMap) {
     setTimeout(() => {
       const m = L.map('modal-big-map', { attributionControl: false });
       L.tileLayer(TILE).addTo(m);
@@ -794,7 +807,7 @@ function renderQuickCards() {
   const container = document.getElementById('quick-cards');
   if (!container) return;
   const budget = TRIP?.meta?.budget;
-  if (budget) {
+  if (budget?.enabled === true) {
     container.innerHTML = renderBudgetCard(budget);
     // 恢复已存储的值并刷新剩余计算
     updateBudget();
@@ -965,19 +978,42 @@ function exportEditSummary() {
 /* === Init · 拉同目录 trip.json === */
 async function init() {
   try {
-    const r = await fetch('trip.json');
-    if (!r.ok) throw new Error('trip.json HTTP ' + r.status);
-    TRIP = await r.json();
+    const inlineEl = document.getElementById('trip-data');
+    const inlineText = inlineEl ? inlineEl.textContent.trim() : '';
+    if (inlineText && inlineText !== '{{TRIP_DATA_JSON}}') {
+      TRIP = JSON.parse(inlineText);
+    } else {
+      const r = await fetch('trip.json');
+      if (!r.ok) throw new Error('trip.json HTTP ' + r.status);
+      TRIP = await r.json();
+    }
     TRIP_ID = computeTripId(); // v2.2 #22 LocalStorage trip_id 前缀
     ARCHETYPE = TRIP?.meta?.archetype || 'medium'; // v2.2 #24 archetype 行程档位
   } catch (err) {
-    document.body.innerHTML = `<div style="padding:40px 20px;font-family:var(--font-serif);color:var(--luosi-red);text-align:center;">
-      <h2 style="font-family:var(--font-decorative);font-size:18px;margin-bottom:10px;">🍜 数据加载失败</h2>
-      <p style="color:var(--muted);font-size:13px;line-height:1.7;">无法读取同目录 <code>trip.json</code> · 请确认是用 HTTP 服务（不是双击 file://）打开<br>建议：<code>cd liuzhou-trip && python3 -m http.server 8000</code> 然后访问 http://localhost:8000/trip.html</p>
+    document.body.innerHTML = `<div style="padding:40px 20px;font-family:var(--font-serif);color:var(--fg);text-align:center;">
+      <h2 style="font-family:var(--font-decorative);font-size:18px;margin-bottom:10px;">数据加载失败</h2>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;">无法读取内联 trip 数据，也无法读取同目录 <code>trip.json</code>。最终交付版应内联 <code>trip-data</code>，确保双击文件可打开。</p>
       <p style="color:#888;font-size:11px;margin-top:14px;">${err.message}</p>
     </div>`;
     return;
   }
+  // v2.4.2 健壮性：days 缺 num 则按顺序自动补。否则 d.num=undefined → 各天容器 id
+  //   (day-${num}/daymap-${num}) 全冲突，导航跳转、地图、时间轴互相覆盖。
+  if (TRIP && Array.isArray(TRIP.days)) TRIP.days.forEach((d, i) => { if (d.num == null) d.num = i + 1; });
+  const meta = TRIP.meta || {};
+  const title = document.getElementById('trip-title');
+  const subtitle = document.getElementById('trip-subtitle');
+  const totalDays = document.getElementById('total-days');
+  const daysCount = TRIP.days?.length || meta.days || '';
+  document.title = `${meta.destination || '旅行'} ${daysCount || ''} 天 · 攻略`;
+  if (title) title.textContent = meta.title || `${meta.destination || '旅行'} ${daysCount || ''} 天攻略`;
+  if (subtitle) {
+    const dateRange = meta.dates?.label || [meta.dates?.start, meta.dates?.end].filter(Boolean).join(' → ');
+    const people = meta.people ? `${meta.people} 人` : '';
+    const route = meta.route_label || meta.origin_destination || meta.city || '';
+    subtitle.textContent = [dateRange, people, route].filter(Boolean).join(' · ');
+  }
+  if (totalDays) totalDays.textContent = daysCount || '';
   renderStickyCtx();
   renderDayNav();
   renderDays();

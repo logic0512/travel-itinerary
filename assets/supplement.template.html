@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>行程补充确认</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent: #C0392B;
+      --accent-light: #FDECEA;
+      --ink: #1A1A1A;
+      --ink-light: #555;
+      --ink-muted: #999;
+      --border: #E0E0E0;
+      --surface: #FAFAFA;
+      --white: #FFFFFF;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background: var(--white);
+      color: var(--ink);
+      min-height: 100vh;
+      padding-bottom: 100px;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .header-left p {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-top: 2px;
+    }
+
+    .btn-export-top {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-export-top:hover { background: #a93226; }
+
+    /* ── Main ── */
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 40px 0;
+    }
+
+    /* ── Collapse Panel ── */
+    .collapse-panel {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 40px;
+      overflow: hidden;
+    }
+
+    .collapse-trigger {
+      width: 100%;
+      background: var(--surface);
+      border: none;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      text-align: left;
+    }
+
+    .collapse-trigger .arrow {
+      font-size: 12px;
+      color: var(--ink-muted);
+      transition: transform 0.2s;
+    }
+
+    .collapse-trigger.open .arrow { transform: rotate(180deg); }
+
+    .collapse-body {
+      display: none;
+      padding: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .collapse-body.open { display: block; }
+
+    .summary-day {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .summary-day:last-child { border-bottom: none; }
+
+    .summary-day-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+      min-width: 56px;
+      padding-top: 2px;
+    }
+
+    .summary-spots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .summary-spot-tag {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 3px 10px;
+      font-size: 12px;
+      color: var(--ink-light);
+    }
+
+    /* ── Section ── */
+    .section {
+      margin-bottom: 48px;
+    }
+
+    .section-header {
+      margin-bottom: 6px;
+    }
+
+    .section-header h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .section-header p {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-top: 4px;
+    }
+
+    .section-divider {
+      height: 2px;
+      background: var(--ink);
+      width: 24px;
+      margin: 10px 0 20px;
+    }
+
+    /* ── Card Grid ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .card-grid-2col {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    /* ── Sight Card ── */
+    .item-card {
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--white);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      cursor: pointer;
+    }
+
+    .item-card:hover {
+      border-color: #bbb;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .item-card.selected {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 14px 0;
+    }
+
+    .card-checkbox {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+      margin-top: 2px;
+    }
+
+    .item-card.selected .card-checkbox {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .card-checkbox svg {
+      display: none;
+    }
+
+    .item-card.selected .card-checkbox svg { display: block; }
+
+    .card-thumb {
+      flex-shrink: 0;
+      width: 80px;
+      height: 60px;
+      border-radius: 4px;
+      object-fit: cover;
+      background: var(--border);
+    }
+
+    .card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 5px;
+    }
+
+    .tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
+    .tag-area {
+      background: #EEF0F3;
+      color: var(--ink-light);
+    }
+
+    .tag-scenario {
+      background: #FFF3F3;
+      color: var(--accent);
+      border: 1px solid #FDDEDE;
+    }
+
+    .card-bottom {
+      padding: 10px 14px 14px;
+      margin-top: 10px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .card-suggest {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+
+    .card-suggest strong {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .card-intro {
+      font-size: 12px;
+      color: var(--ink-light);
+      line-height: 1.7;
+      margin-bottom: 8px;
+    }
+
+    .card-why-backup {
+      font-size: 11px;
+      color: var(--ink-muted);
+      background: #F5F5F5;
+      border-left: 2px solid #CCC;
+      padding: 4px 8px;
+      border-radius: 0 3px 3px 0;
+      margin-bottom: 8px;
+    }
+
+    /* ── Souvenir Card ── */
+    .souvenir-card {
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--white);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      cursor: pointer;
+    }
+
+    .souvenir-card:hover {
+      border-color: #bbb;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .souvenir-card.selected {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .souvenir-card.selected .card-checkbox {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .souvenir-card.selected .card-checkbox svg { display: block; }
+
+    .souvenir-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 14px 0;
+    }
+
+    .souvenir-body {
+      padding: 10px 14px 14px;
+      margin-top: 10px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .souvenir-intro {
+      font-size: 12px;
+      color: var(--ink-light);
+      line-height: 1.7;
+      margin-bottom: 8px;
+    }
+
+    .souvenir-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+
+    .souvenir-row:last-child { margin-bottom: 0; }
+
+    .souvenir-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ink-light);
+      min-width: 56px;
+      flex-shrink: 0;
+    }
+
+    .souvenir-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .souvenir-note {
+      font-size: 11px;
+      color: #999;
+      background: #FFFBF0;
+      border: 1px solid #FFE8A0;
+      border-radius: 3px;
+      padding: 3px 8px;
+      margin-top: 6px;
+      display: inline-block;
+    }
+
+    /* ── Compact List ── */
+    .compact-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .compact-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--white);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .compact-item:last-child { border-bottom: none; }
+
+    .compact-item:hover { background: var(--surface); }
+
+    .compact-item.selected { background: var(--accent-light); }
+
+    .compact-item.selected .card-checkbox {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .compact-item.selected .card-checkbox svg { display: block; }
+
+    .compact-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .compact-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink);
+      min-width: 100px;
+    }
+
+    .compact-sub {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+
+    .compact-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--ink-light);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    /* ── Fixed Bottom Bar ── */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: var(--ink);
+      color: #fff;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+    }
+
+    .bottom-count {
+      font-size: 14px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .bottom-count span {
+      color: #FF7070;
+      font-weight: 700;
+    }
+
+    .btn-export {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 4px;
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-export:hover { background: #a93226; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      top: 80px;
+      right: 40px;
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 13px;
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="header-left">
+    <h1>行程补充确认</h1>
+    <p>勾选想加入攻略的内容，完成后导出</p>
+  </div>
+  <button class="btn-export-top" onclick="exportSelections()">导出已选</button>
+</header>
+
+<main class="main">
+
+  <!-- Section 1: 行程确认摘要 -->
+  <div class="collapse-panel">
+    <button class="collapse-trigger" onclick="toggleCollapse(this)">
+      <span>已锁定行程摘要（点击展开）</span>
+      <span class="arrow">▼</span>
+    </button>
+    <div class="collapse-body">
+      <div class="summary-day">
+        <div class="summary-day-label">Day 1</div>
+        <div class="summary-spots">
+          <span class="summary-spot-tag">成田机场 → 东京</span>
+          <span class="summary-spot-tag">浅草寺</span>
+          <span class="summary-spot-tag">仲见世通</span>
+          <span class="summary-spot-tag">上野公园</span>
+          <span class="summary-spot-tag">秋叶原</span>
+        </div>
+      </div>
+      <div class="summary-day">
+        <div class="summary-day-label">Day 2</div>
+        <div class="summary-spots">
+          <span class="summary-spot-tag">新宿御苑</span>
+          <span class="summary-spot-tag">表参道</span>
+          <span class="summary-spot-tag">涩谷十字路口</span>
+          <span class="summary-spot-tag">代官山</span>
+        </div>
+      </div>
+      <div class="summary-day">
+        <div class="summary-day-label">Day 3</div>
+        <div class="summary-spots">
+          <span class="summary-spot-tag">镰仓高德院</span>
+          <span class="summary-spot-tag">小町通</span>
+          <span class="summary-spot-tag">江之岛</span>
+        </div>
+      </div>
+      <div class="summary-day">
+        <div class="summary-day-label">Day 4</div>
+        <div class="summary-spots">
+          <span class="summary-spot-tag">东京 → 成田机场</span>
+          <span class="summary-spot-tag">银座购物</span>
+          <span class="summary-spot-tag">筑地场外市场</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: 备选景点 -->
+  <section class="section">
+    <div class="section-header">
+      <h2>备选景点</h2>
+      <p>以下地点未进入主行程，可作为备用选项</p>
+    </div>
+    <div class="section-divider"></div>
+    <div class="card-grid-2col">
+
+      <div class="item-card" onclick="toggleCard(this)" data-section="backup_sights" data-id="sight_01" data-name="示例备选景点A — 六本木之丘">
+        <div class="card-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=160&h=120&fit=crop" alt="六本木之丘">
+          <div class="card-info">
+            <div class="card-name">六本木之丘</div>
+            <div class="card-tags">
+              <span class="tag tag-area">六本木</span>
+              <span class="tag tag-scenario">购物观景</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-intro">六本木之丘是东京地标级综合体，54层森大厦内汇聚美术馆、餐厅与品牌店，顶楼观景台可360°俯瞰东京全景。与主行程涩谷片区风格接近，但定位更高端，夜景尤为出色。</div>
+          <div class="card-why-backup">备选原因：与 Day 2 主片区（新宿/涩谷）位置略重叠，时间充裕时可延伸前往，不单独安排一天</div>
+          <div class="card-suggest">适合 <strong>Day 2 傍晚</strong>，涩谷逛完后顺路，天气好/时间有余时</div>
+        </div>
+      </div>
+
+      <div class="item-card" onclick="toggleCard(this)" data-section="backup_sights" data-id="sight_02" data-name="示例备选景点B — 台场海滨公园">
+        <div class="card-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1513407030348-c983a97b98d8?w=160&h=120&fit=crop" alt="台场">
+          <div class="card-info">
+            <div class="card-name">台场海滨公园</div>
+            <div class="card-tags">
+              <span class="tag tag-area">台场</span>
+              <span class="tag tag-scenario">雨天室内</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-intro">台场是东京湾填海造陆的人工岛，兼有海滨步道、购物中心与富士电视台等地标。与中心城区隔海相望，能远眺彩虹大桥与东京湾夜景，室内景点较多，下雨天也不影响体验。</div>
+          <div class="card-why-backup">备选原因：位于东京湾东侧，与主行程片区距离约40分钟车程，专程前往时间成本较高，适合作为雨天或 Day 3 出发前的替换方案</div>
+          <div class="card-suggest">适合 <strong>Day 3 上午</strong>，镰仓出发前时间充裕，或遭遇下雨时替换户外景点</div>
+        </div>
+      </div>
+
+      <div class="item-card" onclick="toggleCard(this)" data-section="backup_sights" data-id="sight_03" data-name="示例备选景点C — 井之头恩赐公园">
+        <div class="card-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=160&h=120&fit=crop" alt="井之头公园">
+          <div class="card-info">
+            <div class="card-name">井之头恩赐公园</div>
+            <div class="card-tags">
+              <span class="tag tag-area">吉祥寺</span>
+              <span class="tag tag-scenario">闲逛漫步</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-intro">井之头公园是东京西侧最受本地人喜爱的城市公园，中心湖可划船，湖边咖啡馆与小摊密集，节假日常有手作市集。出口直连吉祥寺商店街，逛完公园可无缝接续购物。节奏比主行程轻松许多。</div>
+          <div class="card-why-backup">备选原因：位于吉祥寺，与 Day 2 新宿/涩谷片区距离约 4km，安排为备用以避免行程过散</div>
+          <div class="card-suggest">适合 <strong>Day 2 傍晚</strong>，天气好/有多余时间时，或 Day 3 上午轻松开场</div>
+        </div>
+      </div>
+
+      <div class="item-card" onclick="toggleCard(this)" data-section="backup_sights" data-id="sight_04" data-name="示例备选景点D — 东京国立博物馆">
+        <div class="card-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=160&h=120&fit=crop" alt="东京国立博物馆">
+          <div class="card-info">
+            <div class="card-name">东京国立博物馆</div>
+            <div class="card-tags">
+              <span class="tag tag-area">上野</span>
+              <span class="tag tag-scenario">文化历史</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-intro">日本规模最大、藏品最丰的博物馆，收藏国宝与重要文化财超过11万件，包括刀剑、陶瓷、佛像与浮世绘。馆舍本身是明治时代的西洋建筑，气质沉静。就在 Day 1 上野公园旁，不绕路。</div>
+          <div class="card-why-backup">备选原因：Day 1 已安排浅草寺+上野公园，博物馆参观需1.5–2小时，若当天时间紧张则留作备用</div>
+          <div class="card-suggest">适合 <strong>Day 1 下午</strong>，浅草寺之后顺路，或遭遇下雨时替换户外安排</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Section 3: 其他美食推荐 -->
+  <section class="section">
+    <div class="section-header">
+      <h2>其他美食推荐</h2>
+      <p>便餐 / 路过顺吃，未进入主行程</p>
+    </div>
+    <div class="section-divider"></div>
+    <div class="card-grid">
+
+      <div class="item-card" onclick="toggleCard(this)" data-section="extra_food" data-id="food_01" data-name="示例美食A — 一兰拉面（新宿店）">
+        <div class="card-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=160&h=120&fit=crop" alt="拉面">
+          <div class="card-info">
+            <div class="card-name">一兰拉面（新宿店）</div>
+            <div class="card-tags">
+              <span class="tag tag-area">新宿</span>
+              <span class="tag tag-scenario">拉面</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-suggest">适合 <strong>Day 2 午餐</strong>，新宿御苑附近，路过可顺便</div>
+        </div>
+      </div>
+
+      <div class="item-card" onclick="toggleCard(this)" data-section="extra_food" data-id="food_02" data-name="示例美食B — 築地玉寿司">
+        <div class="card-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=160&h=120&fit=crop" alt="寿司">
+          <div class="card-info">
+            <div class="card-name">築地玉寿司</div>
+            <div class="card-tags">
+              <span class="tag tag-area">筑地</span>
+              <span class="tag tag-scenario">寿司</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-suggest">适合 <strong>Day 4 午餐</strong>，筑地场外市场内，人均1500円</div>
+        </div>
+      </div>
+
+      <div class="item-card" onclick="toggleCard(this)" data-section="extra_food" data-id="food_03" data-name="示例美食C — 浅草梅园甜品">
+        <div class="card-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=160&h=120&fit=crop" alt="和菓子">
+          <div class="card-info">
+            <div class="card-name">浅草梅园</div>
+            <div class="card-tags">
+              <span class="tag tag-area">浅草</span>
+              <span class="tag tag-scenario">和菓子</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-suggest">适合 <strong>Day 1 下午茶</strong>，浅草寺参观后，老字号甜品</div>
+        </div>
+      </div>
+
+      <div class="item-card" onclick="toggleCard(this)" data-section="extra_food" data-id="food_04" data-name="示例美食D — 涩谷蒙卡吐司">
+        <div class="card-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=160&h=120&fit=crop" alt="咖啡">
+          <div class="card-info">
+            <div class="card-name">涩谷 % Arabica</div>
+            <div class="card-tags">
+              <span class="tag tag-area">涩谷</span>
+              <span class="tag tag-scenario">咖啡</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="card-suggest">适合 <strong>Day 2 傍晚</strong>，涩谷十字路口旁，网红咖啡站</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Section 4: 特产 / 伴手礼 -->
+  <section class="section">
+    <div class="section-header">
+      <h2>特产 / 伴手礼</h2>
+      <p>勾选感兴趣的，导出后带入行程清单</p>
+    </div>
+    <div class="section-divider"></div>
+    <div class="card-grid-2col">
+
+      <div class="souvenir-card" onclick="toggleCard(this)" data-section="souvenirs" data-id="sou_01" data-name="东京香蕉蛋糕">
+        <div class="souvenir-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=160&h=120&fit=crop" alt="东京香蕉蛋糕">
+          <div class="card-info">
+            <div class="card-name">东京香蕉蛋糕</div>
+            <div class="card-tags">
+              <span class="tag tag-area">西式糕点</span>
+            </div>
+          </div>
+        </div>
+        <div class="souvenir-body">
+          <div class="souvenir-intro">东京最具代表性的伴手礼之一，1991年诞生于东京，以香蕉卡仕达酱填充松软蛋糕著称，外形印有猴子图案，辨识度极高。近年推出限定款（草莓、焦糖等），机场基本随时有货，无需提前排队。</div>
+          <div class="souvenir-row"><span class="souvenir-label">适合送给</span>同事、亲戚，适合批量采购，甜度适中老少皆宜</div>
+          <div class="souvenir-row"><span class="souvenir-label">购买地点</span>羽田/成田机场免税店均有售，行程最后一天买最方便</div>
+          <div class="souvenir-row"><span class="souvenir-label">价格</span><span class="souvenir-price">¥1,200 / 8枚入</span></div>
+          <span class="souvenir-note">保质期约14天，常温保存，不建议太早购买</span>
+        </div>
+      </div>
+
+      <div class="souvenir-card" onclick="toggleCard(this)" data-section="souvenirs" data-id="sou_02" data-name="银座六月天和菓子">
+        <div class="souvenir-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=160&h=120&fit=crop" alt="和菓子">
+          <div class="card-info">
+            <div class="card-name">银座六月天和菓子</div>
+            <div class="card-tags">
+              <span class="tag tag-area">和菓子</span>
+            </div>
+          </div>
+        </div>
+        <div class="souvenir-body">
+          <div class="souvenir-intro">创立于1894年的东京老铺，以精致豆沙馅和菓子闻名，包装采用江户纹样，极具礼品气质。最有名的是「最中」和「练切」系列，以当季食材入馅，口感细腻，甜而不腻，银座本店限定款外面买不到。</div>
+          <div class="souvenir-row"><span class="souvenir-label">适合送给</span>注重格调的长辈、重要客户，或作为正式场合礼品</div>
+          <div class="souvenir-row"><span class="souvenir-label">购买地点</span>银座本店（Day 4 银座购物顺路）/ 伊势丹新宿有售</div>
+          <div class="souvenir-row"><span class="souvenir-label">价格</span><span class="souvenir-price">¥800～¥2,400</span></div>
+          <span class="souvenir-note">保质期短（3–5天），需冷藏，不适合久放或托运</span>
+        </div>
+      </div>
+
+      <div class="souvenir-card" onclick="toggleCard(this)" data-section="souvenirs" data-id="sou_03" data-name="松本清限定美妆套装">
+        <div class="souvenir-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=160&h=120&fit=crop" alt="美妆药妆">
+          <div class="card-info">
+            <div class="card-name">松本清限定美妆套装</div>
+            <div class="card-tags">
+              <span class="tag tag-area">美妆药妆</span>
+            </div>
+          </div>
+        </div>
+        <div class="souvenir-body">
+          <div class="souvenir-intro">日本连锁药妆龙头，部分款式为日本本土限定，国内无法购买。常见采购目标包括：花王护发素、资生堂晒后修复、MINON氨基酸面膜等。外包装有日文说明，但主流品牌网上均有中文攻略可查。</div>
+          <div class="souvenir-row"><span class="souvenir-label">适合送给</span>注重护肤的朋友，或自用补货，性价比高于国内代购</div>
+          <div class="souvenir-row"><span class="souvenir-label">购买地点</span>新宿/涩谷/浅草各松本清门店，行程中多处路过</div>
+          <div class="souvenir-row"><span class="souvenir-label">价格</span><span class="souvenir-price">¥500～¥3,000</span></div>
+          <span class="souvenir-note">液体类注意随身行李100ml限制，建议托运</span>
+        </div>
+      </div>
+
+      <div class="souvenir-card" onclick="toggleCard(this)" data-section="souvenirs" data-id="sou_04" data-name="镰仓本山年轮蛋糕">
+        <div class="souvenir-top">
+          <div class="card-checkbox">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <img class="card-thumb" src="https://images.unsplash.com/photo-1509365465985-25d11c17e812?w=160&h=120&fit=crop" alt="年轮蛋糕">
+          <div class="card-info">
+            <div class="card-name">镰仓本山年轮蛋糕</div>
+            <div class="card-tags">
+              <span class="tag tag-area">西式糕点</span>
+            </div>
+          </div>
+        </div>
+        <div class="souvenir-body">
+          <div class="souvenir-intro">镰仓小町通老铺手作年轮蛋糕，用镰仓本地蜂蜜和鸡蛋制作，断面年轮层次分明，口感湿润不干柴。与超市或机场常见年轮蛋糕相比，食材更讲究，甜度更低，是当地居民自用也常购的款式。</div>
+          <div class="souvenir-row"><span class="souvenir-label">适合送给</span>喜欢精致烘焙的朋友，或作为家庭下午茶伴手礼</div>
+          <div class="souvenir-row"><span class="souvenir-label">购买地点</span>镰仓小町通店（Day 3 参观鹤冈八幡宫后顺路）</div>
+          <div class="souvenir-row"><span class="souvenir-label">价格</span><span class="souvenir-price">¥1,800 / 个</span></div>
+          <span class="souvenir-note">保质期约7天，常温保存，注意包装防压</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Section 5: 实用 App / 工具 -->
+  <section class="section">
+    <div class="section-header">
+      <h2>实用 App / 工具</h2>
+    </div>
+    <div class="section-divider"></div>
+    <div class="compact-list">
+
+      <div class="compact-item" onclick="toggleCard(this)" data-section="apps" data-id="app_01" data-name="Suica（西瓜卡）">
+        <div class="card-checkbox">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="compact-content">
+          <span class="compact-name">Suica（西瓜卡）</span>
+          <span class="tag tag-area">交通</span>
+          <span class="compact-sub">绑定 Apple Pay 即可刷地铁、公交，便利店也能用</span>
+        </div>
+      </div>
+
+      <div class="compact-item" onclick="toggleCard(this)" data-section="apps" data-id="app_02" data-name="Google Maps 离线地图">
+        <div class="card-checkbox">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="compact-content">
+          <span class="compact-name">Google Maps 离线地图</span>
+          <span class="tag tag-area">导航</span>
+          <span class="compact-sub">出发前下载东京离线地图，节省流量，精准到站</span>
+        </div>
+      </div>
+
+      <div class="compact-item" onclick="toggleCard(this)" data-section="apps" data-id="app_03" data-name="Jorudan（乗換案内）">
+        <div class="card-checkbox">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="compact-content">
+          <span class="compact-name">Jorudan（乗換案内）</span>
+          <span class="tag tag-area">换乘查询</span>
+          <span class="compact-sub">日本最准确的电车换乘 App，提前设置好中文界面</span>
+        </div>
+      </div>
+
+      <div class="compact-item" onclick="toggleCard(this)" data-section="apps" data-id="app_04" data-name="Tabelog">
+        <div class="card-checkbox">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 7L5.5 10.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="compact-content">
+          <span class="compact-name">Tabelog</span>
+          <span class="tag tag-area">美食查询</span>
+          <span class="compact-sub">日本最权威餐厅评分，3.5+ 基本可靠，提前查排队情况</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- Fixed Bottom Bar -->
+<div class="bottom-bar">
+  <div class="bottom-count">已选 <span id="selectedCount">0</span> 项内容</div>
+  <button class="btn-export" onclick="exportSelections()">导出已选内容</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">已复制到剪贴板</div>
+
+<script>
+  // ── Toggle Card Selection ──
+  function toggleCard(el) {
+    el.classList.toggle('selected');
+    updateCount();
+  }
+
+  function updateCount() {
+    const count = document.querySelectorAll('.item-card.selected, .compact-item.selected').length;
+    document.getElementById('selectedCount').textContent = count;
+  }
+
+  // ── Collapse Panel ──
+  function toggleCollapse(trigger) {
+    trigger.classList.toggle('open');
+    const body = trigger.nextElementSibling;
+    body.classList.toggle('open');
+  }
+
+  // ── Export ──
+  function exportSelections() {
+    const result = {
+      supplement_selections: {
+        backup_sights: [],
+        extra_food: [],
+        souvenirs: [],
+        apps: []
+      },
+      total_selected: 0
+    };
+
+    document.querySelectorAll('.item-card.selected, .compact-item.selected').forEach(el => {
+      const section = el.dataset.section;
+      const id = el.dataset.id;
+      const name = el.dataset.name;
+      if (section && result.supplement_selections[section]) {
+        result.supplement_selections[section].push({ id, name });
+      }
+    });
+
+    let total = 0;
+    Object.values(result.supplement_selections).forEach(arr => total += arr.length);
+    result.total_selected = total;
+
+    const json = JSON.stringify(result, null, 2);
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(json).then(() => showToast('已复制到剪贴板'));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = json;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('已复制到剪贴板');
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+</script>
+</body>
+</html>

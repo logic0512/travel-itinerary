@@ -351,6 +351,46 @@ footer { text-align: center; font-size: 10.5px; color: var(--muted); padding: 18
   font-size: 11.5px; color: #856404; line-height: 1.5;
 }
 .outdoor-hint b { color: #d35400; }
+
+/* ─── v2.5 · Q2_MODE 三模式样式 ─────────────────────────── */
+
+/* ── Full 模式（默认）：无额外样式 ── */
+
+/* ── Constraint 模式：锁定项橙色标注 ── */
+body.mode-constraint header.top {
+  background: linear-gradient(135deg, #c47d2a, #9a5e1a);
+}
+.locked-banner {
+  background: #fff3cd; border-left: 4px solid #e8a93c;
+  padding: 8px 12px; font-size: 12px; line-height: 1.7;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+}
+.locked-chip {
+  background: #e8a93c; color: #fff;
+  padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 600;
+}
+body.mode-constraint .day.has-locked {
+  border-left: 3px solid #e8a93c;
+}
+body.mode-constraint .collapsible-sec details > summary {
+  cursor: pointer; list-style: none; padding: 4px 0;
+  color: var(--muted); font-size: 12.5px;
+}
+body.mode-constraint .collapsible-sec details > summary::-webkit-details-marker { display: none; }
+
+/* ── Express 模式：极简，高亮核心时间轴 ── */
+body.mode-express header.top {
+  background: linear-gradient(135deg, #2e7d9b, #1a4f64);
+}
+body.mode-express .day-meta-bar { display: none; }
+body.mode-express section#lock details { display: none; } /* 隐藏 locks 展开区，仅显示摘要 */
+body.mode-express .day-header input[name$="_theme"] { display: none; } /* 主题只读，不可改 */
+body.mode-express .sub-sec h3 { font-size: 13px; }
+body.mode-express .tl-add-btn {
+  /* express 模式下新增按钮缩小，减少干扰 */
+  font-size: 11px !important; padding: 4px 6px !important;
+}
 </style>
 </head>
 <body>
@@ -412,6 +452,13 @@ footer { text-align: center; font-size: 10.5px; color: var(--muted); padding: 18
 <footer id="page-footer">Q2 v2.3 · 草稿本地保存</footer>
 
 <script>
+/* ============ Q2_MODE · 三种渲染模式 ============
+ *  'full'       — 从零开始 (Full Flow A)：完整候选池 + 美食池 + 备用方案 + 出行清单
+ *  'constraint' — 有部分计划 (Constraint Flow B)：锁定项高亮置顶 + 开放项标注 · 隐藏通用候选池
+ *  'express'    — 行程已定 (Express Flow C)：仅时间轴 + 导出 · 隐藏候选池/美食池/备用方案
+ * ================================================================ */
+const Q2_MODE = '{{Q2_MODE}}';   // 由构建脚本替换；默认 'full'
+
 /* ============ _PROFILE 常量 ============ */
 const _PROFILE = {
   destination: '{{DESTINATION}}',
@@ -445,18 +492,24 @@ const TODO_SECTIONS = [
 // 每日时间轴（来自 phase-1-report.md 精确预填）
 const DAYS = [
   // {
+  //   num: 1,  // ⚠️ 第几天（1 起）。可省略：renderDays() 会按数组顺序自动补。
+  //            //    但渲染用它做容器 id（tl-d${num}/day-${num}）——务必保证唯一。
   //   date: '2026-05-01', weekday: '周五', theme: 'Day 主题',
   //   main_region: '主片区名', region: 'region_slug',
-  //   reminders: ['Day 级提醒1', 'Day 级提醒2'],  // medium+ 专属
-  //   highlights: ['今日亮点1'],
+  //   day_todos: ['今日待办/提醒1', '提醒2'],  // ⚠️ 渲染函数读的是 day_todos（不是 reminders）
+  //   // reminders / highlights 也兼容：renderDays() 会自动归并进 day_todos（highlights 加 ✨ 前缀）
   //   timeline: [
-  //     { time: '09:00', type: 'sight'|'meal'|'hotel'|'transit'|'experience'|'free',
+  //     { time: '09:00', type: 'sight'|'sight_cultural'|'sight_nature'|'meal_breakfast'|'meal_lunch'|'meal_dinner'|'meal_snack'|'hotel'|'transit'|'experience'|'experience_outdoor'|'experience_food'|'shop'|'venue'|'free',
+  //       must_visit: true,   // 可选：标记为「必去/专程打卡」。① 触发该天必去修饰符；② 让 meal_*/hotel 升格为「点位」（专程去吃的名店、专程打卡的酒店）参与点位计数
   //       intent: 'flagship'|'fallback'|'signature'|'checkin'|'checkout'|'rest'|'intercity'|'local'|'booked'|'walkin',
+  //                          //   ⚠️ intent=flagship/signature 的 meal_*/hotel 也算「点位」（专程/招牌）；普通三餐睡觉不算
   //       spot: '显示名称', note: '补充说明', hours: '营业时段',
   //       region: 'region_slug', transit_to_next: '步行 8min' }
   //   ],
   //   meals: { breakfast: '早餐', lunch: '午餐', dinner: '晚餐' },
-  //   backup: { rain: '雨天备案', other: '其他备案' }
+  //   backup: { rain: '雨天备案', other: '其他备案' },
+  //   // ⚠️ on_trail_food：仅徒步日(模板 T3)填。线路上有无进食/补给点 → 决定徒步页是否含餐饮、正餐是否丢到下一页
+  //   on_trail_food: { has_food: false, supply_points: [ { name: 'XX补给站', type: 'water'|'food'|'shop', note: '' } ] }
   // },
   // 由 Phase 1 report + Stage 1.5 按目的地填充
 ];
@@ -466,7 +519,7 @@ const _CITY_SLUG = '{{CITY_SLUG}}';  // 如 liuzhou / shanghai / kyoto
 
 // 候选池 · 按 type + city + region 分类（同类型才能互相替换）
 const SPOT_OPTIONS = [
-  // { n: '候选项名称', city: 'all'|'城市slug', type: 'sight'|'meal'|'hotel'|'transit'|'experience',
+  // { n: '候选项名称', city: 'all'|'城市slug', type: 'sight'|'sight_cultural'|'sight_nature'|'meal_*'|'hotel'|'transit'|'experience'|'experience_outdoor'|'experience_food'|'shop'|'venue'|'free',
   //   intent: 'flagship'|'fallback'|'signature'|'checkin'|'walkin',
   //   region: 'region_slug'|'all',
   //   card_id: 'c_xxx'  // 关联 trip.json cards 的 id
@@ -496,8 +549,15 @@ const TYPE_LABEL = {
   transit: '✈️ 交通', hotel: '🏨 住宿',
   meal_breakfast: '🍴 早餐', meal_lunch: '🍴 午餐',
   meal_dinner: '🍴 晚餐', meal_snack: '☕ 下午茶/宵夜',
-  sight: '🏯 景点', shop: '🛍️ 购物',
-  experience: '🎭 体验', free: '⏸ 自由'
+  sight: '🏯 景点',
+  sight_cultural: '🏛️ 文化/历史',   // 博物馆、寺庙群、历史街区、宫殿
+  sight_nature: '🌿 自然景观',       // 公园、湖泊、瀑布、海滩（观赏型，非体力型）
+  shop: '🛍️ 购物',
+  experience: '🎭 体验',
+  experience_outdoor: '🥾 户外活动', // 徒步、骑行、赏鲸、皮划艇（体力型）
+  experience_food: '🍜 美食体验',    // 美食导览、烹饪课、市场探索团
+  venue: '🏫 场所/园区',             // 校园、产业园区、大学城、围合主题园区（去的是「场所本身」，非单一景点/活动）
+  free: '⏸ 自由'
 };
 
 /* ============ 动态 header/footer 渲染 ============ */
@@ -536,6 +596,43 @@ function initProfile() {
   if (el_md)   el_md.textContent   = `${prefix}_arrangement.md`;
   if (el_json) el_json.textContent = `${prefix}_trip.json`;
   if (el_todo) el_todo.textContent = `${prefix}_todo.md`;
+
+  // ── v2.5 Q2_MODE 应用 ──────────────────────────────────────────
+  applyMode();
+}
+
+/* ============ v2.5 · Q2_MODE 三模式渲染控制 ============
+ *
+ *  full        全显示（默认）
+ *  constraint  锁定项置顶高亮；美食候选池隐藏；每天备用方案折叠默认收起
+ *  express     仅时间轴 + 导出；美食候选池/备用方案/出行清单区全隐藏
+ *
+ * 视觉层用 CSS 类 mode-full / mode-constraint / mode-express 控制
+ * ================================================================ */
+function applyMode() {
+  const mode = (Q2_MODE && Q2_MODE !== '{{Q2_MODE}}') ? Q2_MODE : 'full';
+  document.body.classList.add('mode-' + mode);
+
+  // 顶栏加模式徽章
+  const badge = {
+    full:       '🗺 Full · 从零开始',
+    constraint: '📌 Constraint · 部分已定',
+    express:    '⚡ Express · 行程已定',
+  }[mode] || '';
+  const hdr = document.getElementById('hdr-sub');
+  if (hdr && badge) hdr.textContent = (hdr.textContent ? hdr.textContent + '  ' : '') + badge;
+
+  // express：隐藏候选池、美食池、每天备用方案（渲染时由 renderDays 处理）
+  if (mode === 'express') {
+    const pool = document.getElementById('meal-pool-wrap');
+    if (pool) pool.style.display = 'none';
+    // locks 区在 express 模式下折叠（只读确认）
+    const ls = document.getElementById('locks-section');
+    if (ls) ls.removeAttribute('open');
+  }
+
+  // constraint：隐藏通用候选池（SPOT_OPTIONS 里 city=all 的项不在下拉里展示）
+  // 实际效果由 renderSpotSelect 过滤；无需额外 DOM 操作
 }
 
 /* ============ §0 LOCKS 折叠骨架 ============ */
@@ -802,7 +899,12 @@ function renderDays() {
   const host = document.getElementById('days-wrap');
   const nav = document.getElementById('day-nav');
 
-  DAYS.forEach(d => {
+  DAYS.forEach((d, _i) => {
+    // v2.4.2 健壮性：num 缺失则按顺序自动补。否则 d.num=undefined → 所有天容器 id 同为
+    //   tl-dundefined / day-undefined，各天时间轴互相覆盖（症状：D1 标题配 D6 内容）。
+    if (d.num == null) d.num = _i + 1;
+    // v2.4.2 兼容：renderDay 消费 day_todos；若只给了 reminders/highlights 则自动归并，避免静默丢失。
+    if (!d.day_todos) d.day_todos = [].concat((d.highlights || []).map(function (h) { return '✨ ' + h; }), d.reminders || []);
     nav.appendChild(elt(`<a href="#day-${d.num}"><strong>D${d.num}</strong><small>${d.date}</small></a>`));
     host.appendChild(renderDay(d));
   });
@@ -814,10 +916,39 @@ function elt(html) { const x = document.createElement('div'); x.innerHTML = html
 
 function renderDay(d) {
   const sect = document.createElement('section');
-  sect.className = `day ${d.cls || ''}`;
+  const mode = (Q2_MODE && Q2_MODE !== '{{Q2_MODE}}') ? Q2_MODE : 'full';
+
+  // constraint 模式：区分锁定项（is_critical）与开放项
+  const hasLocked = mode === 'constraint' && (d.timeline || []).some(r => r.is_critical);
+  sect.className = `day ${d.cls || ''} mode-day-${mode}${hasLocked ? ' has-locked' : ''}`;
   sect.id = `day-${d.num}`;
 
   const totalDays = _PROFILE.days || DAYS.length || '?';
+
+  // constraint 模式：已锁定项预览（置顶）
+  const lockedPreview = (mode === 'constraint' && hasLocked)
+    ? `<div class="locked-banner">
+        📌 已锁定：${(d.timeline || []).filter(r => r.is_critical).map(r => `<span class="locked-chip">${r.time || ''} ${r.spot || ''}</span>`).join('')}
+       </div>`
+    : '';
+
+  // express 模式隐藏：备用方案 / 当日备注；constraint 模式备用方案折叠
+  const backupHtml = mode === 'express' ? '' : `
+      <div class="sub-sec${mode === 'constraint' ? ' collapsible-sec' : ''}">
+        ${mode === 'constraint'
+          ? `<details><summary><h3 style="display:inline;">🔄 备用方案</h3></summary>`
+          : `<h3>🔄 备用方案</h3>`}
+        <div class="meal-row"><label>下雨</label><input type="text" name="d${d.num}_backup_rain" value="${(d.backup || {}).rain || ''}"></div>
+        ${getOutdoorSpotHint(d)}
+        <div class="meal-row"><label>突发</label><input type="text" name="d${d.num}_backup_other" value="${(d.backup || {}).other || ''}"></div>
+        ${mode === 'constraint' ? '</details>' : ''}
+      </div>`;
+
+  const notesHtml = mode === 'express' ? '' : `
+      <div class="sub-sec">
+        <h3>📝 当日备注</h3>
+        <textarea class="notes-area" name="d${d.num}_notes" placeholder="想法/提醒/变更说明..."></textarea>
+      </div>`;
 
   sect.innerHTML = `
     <div class="day-header">
@@ -825,6 +956,7 @@ function renderDay(d) {
       <div class="date">${d.theme}</div>
       <input type="text" name="d${d.num}_theme" value="${d.theme}" placeholder="主题（可改）">
     </div>
+    ${lockedPreview}
     <div class="day-meta-bar" id="meta-d${d.num}">
       <div><div class="lb">🚨 待办</div><div class="val">${(d.day_todos || []).length} 项</div></div>
       <div><div class="lb">📍 主片区</div><div class="val" style="font-size:11px;">${d.main_region || ''}</div></div>
@@ -860,17 +992,8 @@ function renderDay(d) {
         <div class="meal-row"><label>晚</label><input type="text" name="d${d.num}_dinner" value="${(d.meals || {}).dinner || ''}"></div>
       </div>
 
-      <div class="sub-sec">
-        <h3>🔄 备用方案</h3>
-        <div class="meal-row"><label>下雨</label><input type="text" name="d${d.num}_backup_rain" value="${(d.backup || {}).rain || ''}"></div>
-        ${getOutdoorSpotHint(d)}
-        <div class="meal-row"><label>突发</label><input type="text" name="d${d.num}_backup_other" value="${(d.backup || {}).other || ''}"></div>
-      </div>
-
-      <div class="sub-sec">
-        <h3>📝 当日备注</h3>
-        <textarea class="notes-area" name="d${d.num}_notes" placeholder="想法/提醒/变更说明..."></textarea>
-      </div>
+      ${backupHtml}
+      ${notesHtml}
     </div>
   `;
 
