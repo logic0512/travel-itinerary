@@ -1,6 +1,6 @@
 ---
 name: travel-itinerary
-description: Travel assistant for generating source-checked, visually polished travel guides. Handles three user states: no clear idea yet, partial plan needing completion, and fixed places needing itinerary cleanup. Includes path triage, artifact intake, active research, fact ledger, image asset collection, geography/time validation, destination-specific visual theming, a required HTML/CSS print source, browser-exported editorial PDF output, optional offline interactive companion, Edit Mode, weather planning, and solo-traveler safety. Use when the user asks for travel ideas, travel guides, itinerary planning, trip route cleanup, or a good-looking file to carry while traveling.
+description: Travel assistant for generating source-checked, visually polished travel guides. Handles three user states: no clear idea yet, partial plan needing completion, and fixed places needing itinerary cleanup. Includes path triage, artifact intake, active research, fact ledger, image asset collection, geography/time validation, destination-specific visual theming, a required HTML/CSS print source, browser-exported editorial PDF output, a trip-wide constraints layer (budget tier, companion structure, theme/pilgrimage), multi-city and cross-border skeletons, weather planning, and solo-traveler safety. Use when the user asks for travel ideas, travel guides, itinerary planning, trip route cleanup, or a good-looking file to carry while traveling.
 origin: logic0512
 version: 3.0.0
 ---

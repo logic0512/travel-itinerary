@@ -1,7 +1,7 @@
 {
   "name": "travel-itinerary",
-  "version": "2.8.0",
-  "description": "Travel planning workflow for idea discovery, artifact intake, partial-plan completion, and fixed-place itinerary cleanup. Produces source-checked, image-rich HTML-first travel guides whose final PDFs are browser-exported from the HTML/CSS print source, with geography/time validation, Edit Mode, weather awareness, and solo-traveler safety layer.",
+  "version": "3.0.0",
+  "description": "Travel planning workflow for idea discovery, artifact intake, partial-plan completion, and fixed-place itinerary cleanup. A four-interface map pipeline (discovery -> planner -> supplement -> trip-print-v2) with path triage and pre-work gates (fact-precheck, feasibility, eligibility). Produces source-checked, image-rich HTML-first travel guides whose final PDFs are browser-exported from the HTML/CSS print source, with geography/time validation, a trip-wide constraints layer (budget tier, companion structure, theme/pilgrimage), multi-city and cross-border skeletons, weather awareness, and a solo-traveler safety layer.",
   "author": {
     "name": "logic0512",
     "url": "https://github.com/logic0512"

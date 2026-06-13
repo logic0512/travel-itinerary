@@ -6,3 +6,9 @@
 node_modules/
 package.json
 package-lock.json
+
+# internal dev tracking — kept local, excluded from public package
+todo.md
+BATCH2-PROCESS-LOG.md
+BATCH2-RESULTS.md
+assets/_deprecated/
