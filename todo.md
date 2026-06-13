@@ -62,14 +62,17 @@
 **涉及**：SKILL.md 二章管道图/A·Full序列/契约表、assets/planner.template.html
 **修复**（2026-06-12）：**零界面改动 + 无分图/分文件机制**（用户校准：一天只在一个城活动，planner 单文件按天聚焦 dayPlans[currentDay] 本就够；「按城拆多 planner / 分次跑 / 自动判断远近合分图」是过度设计、会让攻略页产出零碎——已否决。跨城游产出粒度就是「天」、每天归属其城、城际日出 T2，现有「按天出页」原生覆盖）。①SKILL.md 第二章/Stage0/A序列 + 第六章新增 **Stage 0「城际骨架」步骤 + `meta.city_plan{cities[]{name,region,days}, intercity[]{from,to,mode,duration}}`** 数据容器（照搬 constraints 的 Claude 消费容器模式）。②v2.4-checklist 新增 **9.0.6「多城城际骨架捕获」**（触发≥2城 / 天数对账 / discovery 按城配额 / 单文件铁律）+ 写进 9.0.4 字段清单。③**断裂 C 城际逐段对账**（city_plan.intercity 段数 == timeline intercity transit 段数，逐段比对 from/to，缺即 fail）写进断裂 C 第②步 + checklist M 规则 + type-vocabulary 验收第⑤条——防三城两段漏中间一段静默通过。④trip-print-v2 仅注释登记 city_plan、不渲染（避布局风险）。**评审 2 轮抓出并修复**：P1 转场日天数归属歧义（钉死「归入出发城」口径，3+2+2=7 自洽，与 medium-multi⑤/9.1 活动分配自洽）、P2-a 多城漏产 city_plan 时对账静默落空（补「未产出=P0 流程违规、对账直接 fail」守卫）、P2-b medium-multi 与 9.0.6 region 双处规定冗余（点明城市顺序/region/天数以 city_plan 为准）。守住不碰 discovery/planner/supplement/selector。
 
-## [TRAVEL-006] 其他 P2（择机）
-- planner/trip-print-v2 用 Leaflet 在线瓦片，离线携带场景白图——区分「规划期联网OK / 成品需离线静态图兜底」。
-- 7天16+ cards 自动触发 W-1 分批交付，无硬判定（靠自觉）。
-- 香港中转（深圳经港往返）无 region 归属，medium-multi 增「跨境中转段」。
-- 9.6 核查链未把 route_path/每day maturity 落库校验纳入。
-- （病灶④遗留）出行须知区 `renderConstraintsBanner` 单 type 约束超 ~4 条时 max-height 静默裁切——应改自适应高度 / 缩排 / 折叠「还有 N 条」提示，而非裁掉看不见。
-- （病灶④评审发现）`meta.budget_tracking` 在 trip-print-v2 无消费者（S-5 的 renderQuickCards 是旧 trip 模板遗留规则）——要么给 print-v2 补预算追踪卡、要么删 S-5 死规则。
-- （病灶④评审发现）checklist 9.0.5④ 与 9.0.1「同行约束」职责边界叙述偏绕，建议明确「9.0.1 声明只用于路径判定、落地一律走 meta.constraints」。
+## [TRAVEL-006] 其他 P2（择机）· 纯文档 5 条已清（2026-06-13），剩 2 条需改模板缓做
+**已清（纯文档零界面）：**
+- ✅ **7天16+ cards 分批交付无硬判定** → checklist W-1 加硬判定：cards≥16 或 天数≥7 强制分批、不得一次灌完（:253）。
+- ✅ **香港中转（深圳经港往返）无 region 归属** → **已被 TRAVEL-011 收编**（9.0.6 entry_exit + gateway「中转口岸不建 region 不占天」口径），原 medium-multi 增段提议作废。
+- ✅ **9.6 核查链未把 route_path/每day maturity 落库校验纳入** → 9.6 流程加「9.6.1 结构落库校验」步（route_path∈{A,B,C}、每日 maturity∈{locked,partial,open} 缺即补）。
+- ✅ **9.0.5④ 与 9.0.1「同行约束」职责边界叙述偏绕** → 9.0.5④ 末尾加「职责边界」段：9.0.1 声明只用于路径判定（判断输入），落地一律走 meta.constraints（持久产物），声明≠落地。
+- ✅ **`meta.budget_tracking` 在 trip-print-v2 无消费者** → grep 实证 renderQuickCards 等在新模板 0 处（旧 trip 模板遗留），checklist S-5 + W-2 标为死规则、SKILL.md 字段标 inert（L2 补卡前不当生效功能）。**注**：这里只清「死规则文档」，真要让预算追踪卡生效需 L2 给 print-v2 补卡（碰模板，缓做）。
+
+**仍缓做（需改模板/CSS，破零界面，不在本轮）：**
+- ⏳ planner/trip-print-v2 用 Leaflet 在线瓦片，离线携带白图——需「成品离线静态图兜底」（碰模板/导出）。
+- ⏳ （病灶④遗留）出行须知区 `renderConstraintsBanner` 单 type 约束超 ~4 条时 max-height 静默裁切——需改 CSS 自适应高度/折叠「还有 N 条」（碰 trip-print-v2 模板）。
 
 ---
 
@@ -150,7 +153,8 @@
 **修复方向**（纯文档规则层 · 守零界面 B 方案）：9.0.6 给 city_plan 加「入境段」概念 + 跨境提醒挂载位；转场日口径补「跨夜长途转场（夜船/红眼）单独占一天、不归出发城也不归到达城、作独立 T2 赶路日」分支。可与 TRAVEL-009 准入门捆做（同属跨境出行族）。
 **涉及**：references/v2.4-checklist.md 9.0.6、SKILL.md 第六章转场口径
 
-## [TRAVEL-012] 🟡 半解已修复（2026-06-13 · 规则层完成，selectPagesForDay/界面感知仍缓做）· 病灶根⑨：「会改变筛选强度的同行结构」（带娃/家庭/适老）没建成一等约束（P1 · 案例1 命中 · 元根因 C · 第三波半解+缓做界面）
+## [TRAVEL-012] 🟡 半解已修复（2026-06-13 · 规则层完成 + family👨‍👩‍👧 专属分组已补，仅 selectPagesForDay 自动感知仍缓做）· 病灶根⑨：「会改变筛选强度的同行结构」（带娃/家庭/适老）没建成一等约束（P1 · 案例1 命中 · 元根因 C · 第三波半解+缓做界面）
+> **界面收尾补充（2026-06-13）**：family 专属 👨‍👩‍👧 图标分组已补进 trip-print-v2（`CSTR_TYPE`+`CSTR_ORDER`，render 实测独立成「同行」组）。**仍缓做**：让 `selectPagesForDay` 真正感知同行结构去自动选页（要碰 selector，伤筋动骨，留 L2）。
 > 半解：9.0.5 加 ⑤ 同行结构一等筛选 lens——带娃/适老/含老幼或行动不便成员的多代 → 写 meta.constraints(type:'family') + open 段真正降强度（候选偏亲子低强度/planner降单日强度/缩跨城/长车程拆缓）；轻重控制判据=「会不会改变行程强度」非人数/代际，全健康成人多代+情侣+朋友团不触发，用户明确要高强度则按 9.0.7 轴2 摊牌不机械降。SKILL.md constraints.type 加 family。零界面（family 经 other 兜底渲染，专属分组=纯模板改动+selectPagesForDay 感知=缓做）。红队+三层测试通过（A 层降到位/B 层不误伤/C1 尊重用户意愿/C2 全健康成人多代不误报），主控亲读模板第1065行兜底证实 family 不丢。
 **症状**：9.0.1 口头问了「儿童」，但 9.0.4 字段只给 solo（type:safety），无 family 类；四界面无 kids 字段、selectPagesForDay 不感知同行结构 → 「问了没字段接、字段有也驱动不了筛选」。
 - 案例1：-25℃ 带三年级娃跨双省，只能渲染成「注意保暖」一句话，无法驱动候选筛选偏亲子/低强度、planner 降单日强度+缩跨城。
@@ -159,7 +163,7 @@
 **涉及**：references/v2.4-checklist.md 9.0.5、SKILL.md 第六章 constraints.type；（缓做）stage4-selector.js
 
 ## [TRAVEL-013] ✅ 已修复（2026-06-13） · 病灶根⑬：缺「正向主题/朝圣 lens」（影视打卡等贯穿性软偏好）（P1 · 案例3 命中 · 元根因 C · 第三波）
-> **修复摘要**：新建 `meta.themes[]` 加分 lens 容器（与 constraints 减分语义相反），9.0.5 新增 ⑥ 子节定义「加分排序 + 锚点保入、绝不筛掉非主题候选」三处驱动 + scope 单城/全程 + 衔接 9.0.0④ 具名核查 + 衔接 9.0.7 多取景地落城外聚合摊牌 + 升级阈值 + 防硬造/防过度盘问；SKILL.md 第六章补 `meta.themes[]` schema 行 + constraints.type 补 `theme`🎬 + 断裂 C ⑧步加主题转写（themes→constraints type:'theme' 走「出行须知」出图）+ ⑦步加「anchor 保入对账」验收门。**红队+三层测试双 subagent 收敛**：6 场景全过（A台湾恶作剧之吻/B韩剧朝圣/C成都不误触/D东北family不打架/E重庆顺便看看不升/F城外锚点回钩），round-2 补 2 HIGH（②减分误用豁免 + anchor 保入对账门）+ LOW（★必去∩锚点去重、scope沿用后果、升级阈值、聚合摊牌）。主控独立 WebSearch 复核《苦尽柑来》取景地（安东搭景村/高敞初吻/济州仅部分实景 均坐实，未核实的长兴已从规则收掉）。零界面守住（仅改 SKILL.md+checklist，模板/selector mtime 未变）。**唯一缓做**：theme 专属 🎬 图标分组（纯模板改动 CSTR_TYPE+CSTR_ORDER），当前经 other📌 兜底渲染、不丢、不影响功能。
+> **修复摘要**：新建 `meta.themes[]` 加分 lens 容器（与 constraints 减分语义相反），9.0.5 新增 ⑥ 子节定义「加分排序 + 锚点保入、绝不筛掉非主题候选」三处驱动 + scope 单城/全程 + 衔接 9.0.0④ 具名核查 + 衔接 9.0.7 多取景地落城外聚合摊牌 + 升级阈值 + 防硬造/防过度盘问；SKILL.md 第六章补 `meta.themes[]` schema 行 + constraints.type 补 `theme`🎬 + 断裂 C ⑧步加主题转写（themes→constraints type:'theme' 走「出行须知」出图）+ ⑦步加「anchor 保入对账」验收门。**红队+三层测试双 subagent 收敛**：6 场景全过（A台湾恶作剧之吻/B韩剧朝圣/C成都不误触/D东北family不打架/E重庆顺便看看不升/F城外锚点回钩），round-2 补 2 HIGH（②减分误用豁免 + anchor 保入对账门）+ LOW（★必去∩锚点去重、scope沿用后果、升级阈值、聚合摊牌）。主控独立 WebSearch 复核《苦尽柑来》取景地（安东搭景村/高敞初吻/济州仅部分实景 均坐实，未核实的长兴已从规则收掉）。零界面守住（仅改 SKILL.md+checklist，模板/selector mtime 未变）。**🎬 图标分组已补（2026-06-13 界面收尾）**：trip-print-v2 `CSTR_TYPE`+`CSTR_ORDER` 加 `theme`🎬，playwright render 实测「出行须知」独立成 🎬主题朝圣组（6 格一行不撑破、零报错、带【region】前缀）——**013 现已无缓做、完整完成**。
 **症状**：constraints 全是「负向把关」（省钱→砍贵的、高反→砍高海拔），缺「正向驱动」（打卡某剧→主动把取景地顶到候选前排）；discovery 候选无 theme 字段、constraints.type 无 theme（塞 other 语义弱且不参与选点排序）。
 - 案例3：打卡《苦尽柑来》是贯穿三城主题 lens，应像省钱一样全程筛选顶候选，现无结构位驱动 → 跨界面易稀释丢失，沦为普通三城游。
 **与 5 病灶关系**：病灶④反例（约束体系只有减分 lens 没有加分 lens）。

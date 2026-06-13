@@ -1,3 +1,8 @@
 # OS junk
 .DS_Store
 **/.DS_Store
+
+# node / tooling artifacts (e.g. transient playwright install for render verification)
+node_modules/
+package.json
+package-lock.json

@@ -1044,10 +1044,10 @@ function renderOverview(planList){
    主出口：trip / region:slug / day:N 三种 scope 的约束全部纳入，一条不丢。
    region/day 级在文字前标注适用范围（【第N天】/【region名】），保证读者知道约束何时生效。*/
 const CSTR_TYPE={
-  health:{ic:'🏥',label:'健康'}, safety:{ic:'🌙',label:'安全'}, budget:{ic:'💰',label:'预算'},
-  season:{ic:'🌦',label:'季节天气'}, transport:{ic:'🚐',label:'交通'}, other:{ic:'📌',label:'其他'}
+  health:{ic:'🏥',label:'健康'}, safety:{ic:'🌙',label:'安全'}, family:{ic:'👨‍👩‍👧',label:'同行'}, budget:{ic:'💰',label:'预算'},
+  season:{ic:'🌦',label:'季节天气'}, transport:{ic:'🚐',label:'交通'}, theme:{ic:'🎬',label:'主题朝圣'}, other:{ic:'📌',label:'其他'}
 };
-const CSTR_ORDER=['health','safety','season','transport','budget','other'];
+const CSTR_ORDER=['health','safety','family','season','transport','budget','theme','other'];
 // scope → 适用范围中文前缀。day:N → 【第N天】；region slug → 【region名】。
 // region 名映射缺失时降级显示 slug 原文（如「【hualien】」）—— TRIP 数据无 region slug→中文名表，
 // 约束 text 本身应自带地名作为兜底；若日后补 region 映射，在此接入即可。
